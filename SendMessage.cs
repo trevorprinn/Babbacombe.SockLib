@@ -21,29 +21,29 @@ namespace Babbacombe.SockLib {
         protected abstract void SendData(Stream stream);
 
         public void Send(Stream stream) {
-            BufferedStream bstream = stream is BufferedStream ? (BufferedStream)stream : new BufferedStream(stream);
             var delim = Encoding.UTF8.GetBytes(new string('-', 29) + Guid.NewGuid().ToString());
-            bstream.Write(delim, 0, delim.Length);
-            bstream.WriteByte((byte)'\n');
+            stream.Write(delim, 0, delim.Length);
+            stream.WriteByte((byte)'\n');
 
             var type = (byte)Type.ToString()[0];
-            bstream.WriteByte(type);
+            stream.WriteByte(type);
 
             if (!string.IsNullOrWhiteSpace(Id)) {
                 var buf = Encoding.UTF8.GetBytes(Id);
-                bstream.Write(buf, 0, buf.Length);
+                stream.Write(buf, 0, buf.Length);
             }
-            bstream.WriteByte((byte)'\n');
+            stream.WriteByte((byte)'\n');
 
             if (!string.IsNullOrWhiteSpace(Command)) {
-                var buf = Encoding.UTF8.GetBytes(Id);
-                bstream.Write(buf, 0, buf.Length);
+                var buf = Encoding.UTF8.GetBytes(Command);
+                stream.Write(buf, 0, buf.Length);
             }
-            bstream.WriteByte((byte)'\n');
+            stream.WriteByte((byte)'\n');
 
             SendData(stream);
-            bstream.Write(delim, 0, delim.Length);
-            bstream.Flush();
+            stream.WriteByte((byte)'\n');
+            stream.Write(delim, 0, delim.Length);
+            stream.Flush();
         }
     }
 
