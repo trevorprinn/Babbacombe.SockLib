@@ -9,14 +9,10 @@ using System.Xml.Linq;
 namespace Babbacombe.SockLib {
     public abstract class SendMessage {
         protected abstract MessageTypes Type { get; }
-        public string Command { get; set; }
+        public virtual string Command { get; set; }
         public string Id { get; set; }
 
         protected SendMessage() { }
-
-        public void SetStatus(string status, string description) {
-            Command = string.Format("{0} {1}", status, description).Trim();
-        }
 
         protected abstract void SendData(Stream stream);
 
@@ -54,6 +50,13 @@ namespace Babbacombe.SockLib {
             get { return MessageTypes.Text; }
         }
 
+        public SendTextMessage() { }
+
+        public SendTextMessage(string command, string text = null) {
+            Command = command;
+            Text = text;
+        }
+
         protected virtual byte[] GetData() {
             if (Text == null) return null;
             return Encoding.UTF8.GetBytes(Text);
@@ -66,12 +69,36 @@ namespace Babbacombe.SockLib {
         }
     }
 
+    public class SendStatusMessage : SendTextMessage {
+        public string Status { get; set; }
+        public string Description { get; set; }
+
+        protected override MessageTypes Type {
+            get { return MessageTypes.Status; }
+        }
+
+        public SendStatusMessage(string status, string description = null, string text = null) {
+            Status = status;
+            Description = description;
+            Text = text;
+        }
+
+        public override string Command {
+            get { return string.Format("{0} {1}", Status, Description).Trim(); }
+            set { throw new NotImplementedException(); }
+        }
+
+        protected override void SendData(Stream stream) { }
+    }
+
     public class SendUnicodeMessage : SendTextMessage {
         protected override MessageTypes Type {
-            get {
-                return MessageTypes.Unicode;
-            }
+            get { return MessageTypes.Unicode; }
         }
+
+        public SendUnicodeMessage() { }
+
+        public SendUnicodeMessage(string command, string text = null) : base(command, text) { }
 
         protected override byte[] GetData() {
             if (Text == null) return null;
@@ -83,10 +110,12 @@ namespace Babbacombe.SockLib {
         private XDocument _document;
 
         protected override MessageTypes Type {
-            get {
-                return MessageTypes.Xml;
-            }
+            get { return MessageTypes.Xml; }
         }
+
+        public SendXmlMessage() { }
+
+        public SendXmlMessage(string command, string text = null) : base(command, text) { }
 
         public XDocument Document {
             get { return _document; }
@@ -104,6 +133,13 @@ namespace Babbacombe.SockLib {
             get { return MessageTypes.Binary; }
         }
 
+        public SendBinaryMessage() { }
+
+        public SendBinaryMessage(string command, Stream stream = null) {
+            Command = command;
+            SendData(stream);
+        }
+
         protected override void SendData(Stream stream) {
             if (DataStream == null) return;
             DataStream.CopyTo(stream);
@@ -114,9 +150,14 @@ namespace Babbacombe.SockLib {
         private List<string> _filenames = new List<string>();
 
         protected override MessageTypes Type {
-            get {
-                return MessageTypes.Filenames;
-            }
+            get { return MessageTypes.Filenames; }
+        }
+
+        public SendFilenamesMessage() { }
+
+        public SendFilenamesMessage(string command, IEnumerable<string> filenames = null) {
+            Command = command;
+            if (filenames != null) Filenames = filenames;
         }
 
         public IEnumerable<string> Filenames {
@@ -158,6 +199,13 @@ namespace Babbacombe.SockLib {
 
         protected override MessageTypes Type {
             get { return MessageTypes.Multipart; }
+        }
+
+        public SendMultipartMessage() { }
+
+        public SendMultipartMessage(string command, IEnumerable<Item> items = null) {
+            Command = command;
+            Items = items;
         }
 
         public class Item {

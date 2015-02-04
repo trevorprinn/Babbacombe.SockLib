@@ -36,17 +36,5 @@ namespace Babbacombe.SockLib {
         private MessageTypes getMessageType(char t) {
             return ((MessageTypes[])Enum.GetValues(typeof(MessageTypes))).Single(mt => mt.ToString()[0] == t);
         }
-
-        public string Status {
-            get { return Command.Split(' ')[0]; }
-        }
-
-        public string StatusMessage {
-            get {
-                var words = Command.Split(' ');
-                if (words.Length < 2) return null;
-                return string.Join(" ", words.Skip(1));
-            }
-        }
     }
 }

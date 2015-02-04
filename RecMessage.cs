@@ -21,6 +21,7 @@ namespace Babbacombe.SockLib {
         public static RecMessage Create(RecMessageHeader header, Stream stream) {
             switch (header.Type) {
                 case MessageTypes.Text: return new RecTextMessage(header, stream);
+                case MessageTypes.Status: return new RecStatusMessage(header, stream);
                 case MessageTypes.Unicode: return new RecUnicodeMessage(header, stream);
                 case MessageTypes.Xml: return new RecXmlMessage(header, stream);
                 case MessageTypes.Binary: return new RecBinaryMessage(header, stream);
@@ -48,6 +49,26 @@ namespace Babbacombe.SockLib {
         public string Text { get { return this.Encoding.GetString(_data.ToArray()); } }
 
         protected virtual Encoding Encoding { get { return Encoding.UTF8; } }
+    }
+
+    public class RecStatusMessage : RecTextMessage {
+        private string _command;
+
+        internal RecStatusMessage(RecMessageHeader header, Stream stream) : base(header, stream) {
+            _command = header.Command;
+        }
+
+        public string Status {
+            get { return _command.Split(' ')[0]; }
+        }
+
+        public string StatusMessage {
+            get {
+                var words = _command.Split(' ');
+                if (words.Length < 2) return null;
+                return string.Join(" ", words.Skip(1));
+            }
+        }
     }
 
     public class RecUnicodeMessage : RecTextMessage {

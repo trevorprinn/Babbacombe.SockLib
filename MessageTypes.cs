@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 namespace Babbacombe.SockLib {
 
     public enum MessageTypes {
-        Text, Unicode, Xml, Binary, Filenames, Multipart
+        Text, Status, Unicode, Xml, Binary, Filenames, Multipart
     }
 
 }
