@@ -230,8 +230,9 @@ namespace Babbacombe.SockLib {
                 } else {
                     sendString(stream, item.Data);
                 }
+                sendString(stream, delim + "--");
             }
-            sendString(stream, delim + "--");
+            stream.Flush();
         }
 
         private void sendString(Stream s, string data, bool addEol = true) {

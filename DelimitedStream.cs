@@ -48,6 +48,8 @@ namespace Babbacombe.SockLib {
             } while (cnt > 0);
         }
 
+        public bool EndOfStream { get { return _endOfStream && !_pushBackBuffer.Any(); } }
+
         public override int Read(byte[] buffer, int offset, int count) {
             bool delimiterReached = false;
             if (_endOfStream && !_pushBackBuffer.Any()) return 0;
@@ -116,9 +118,9 @@ namespace Babbacombe.SockLib {
         }
 
         public void PushbackOverrun(byte[] overrun) {
-            foreach (byte b in overrun) {
-                _pushBackBuffer.Enqueue(b);
-            }
+            List<int> o = overrun.Select(b => (int)b).ToList();
+            o.AddRange(_pushBackBuffer.ToArray());
+            _pushBackBuffer = new Queue<int>(o);
         }
 
         public override int ReadByte() {
@@ -136,7 +138,7 @@ namespace Babbacombe.SockLib {
         /// </summary>
         /// <returns>null at the end of the stream.</returns>
         public string ReadLine() {
-            if (_endOfStream) return null;
+            if (EndOfStream) return null;
             var buf = new StringBuilder();
             int ch = readByte();
             while (ch >= 0 && ch != '\n') {

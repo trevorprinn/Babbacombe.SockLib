@@ -111,7 +111,7 @@ namespace Babbacombe.SockLib {
             if (DataReceived != null) DataReceived(this, new DataReceivedEventArgs(items, name, data));
         }
 
-        internal MultipartManager(Stream stream) {
+        public MultipartManager(Stream stream) {
             _stream = stream;
         }
 
@@ -124,32 +124,30 @@ namespace Babbacombe.SockLib {
         // underlying stream because you can continue to read on it.
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2202:Do not dispose objects multiple times")]
         public void Process() {
-            using (var reader = new DelimitedStream(_stream)) {
+            using (var mainstream = _stream is DelimitedStream ? (DelimitedStream)_stream : new DelimitedStream(_stream)) {
                 do {
-                    var headers = readHeaders(reader);
-                    if (headers == null) break;
-                    var headerData = parseHeaders(headers);
-                    if (headerData.ContainsKey("filename")) {
-                        var info = new FileInfo(headerData);
-                        using (var uploadStream = new DelimitedStream(reader, reader.Delimiter)) {
-                            OnFileUploaded(info, uploadStream);
-                            uploadStream.SkipToEnd();
-                            reader.PushbackOverrun(uploadStream.GetOverrun());
+                    using (var reader = new DelimitedStream(mainstream)) {
+                        var headers = readHeaders(reader);
+                        if (headers == null) break;
+                        var headerData = parseHeaders(headers);
+                        if (headerData.ContainsKey("filename")) {
+                            var info = new FileInfo(headerData);
+                            OnFileUploaded(info, reader);
+                        } else {
+                            string name = headerData.ContainsKey("name") ? headerData["name"] : null;
+                            string value;
+                            using (var m = new MemoryStream()) {
+                                reader.CopyTo(m);
+                                m.Seek(0, SeekOrigin.Begin);
+                                value = new string(Encoding.UTF8.GetChars(m.ToArray()));
+                            }
+                            _dataItems.Add(new DataItem(name, value));
+                            OnDataReceived(headerData, name, value);
                         }
-                    } else {
-                        string name = headerData.ContainsKey("name") ? headerData["name"] : null;
-                        string value;
-                        using (var m = new MemoryStream())
-                        using (var d = new DelimitedStream(reader, reader.Delimiter)) {
-                            d.CopyTo(m);
-                            m.Seek(0, SeekOrigin.Begin);
-                            value = new string(Encoding.UTF8.GetChars(m.ToArray()));
-                        }
-                        _dataItems.Add(new DataItem(name, value));
-                        OnDataReceived(headerData, name, value);
+                        reader.SkipToEnd();
+                        mainstream.PushbackOverrun(reader.GetOverrun());
                     }
-                    reader.ReadLine();
-                } while (true);
+                } while (!mainstream.EndOfStream);
             }
         }
 

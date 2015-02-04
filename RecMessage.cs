@@ -90,8 +90,22 @@ namespace Babbacombe.SockLib {
     }
 
     public class RecMultipartMessage : RecMessage {
+        private MultipartManager _manager;
+
         internal RecMultipartMessage(RecMessageHeader header, Stream stream)
             : base(header, stream) {
+        }
+
+        public new Stream Stream { get { return base.Stream; } }
+
+        public MultipartManager Manager {
+            get {
+                if (_manager == null) _manager = new MultipartManager(Stream);
+                return _manager;
+            }
+            set {
+                _manager = value;
+            }
         }
     }
 }
