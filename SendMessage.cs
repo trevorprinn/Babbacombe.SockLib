@@ -83,6 +83,8 @@ namespace Babbacombe.SockLib {
             Text = text;
         }
 
+        public SendStatusMessage(Exception ex) : this("Exception", ex.Message, ex.ToString()) { }
+
         public override string Command {
             get { return string.Format("{0} {1}", Status, Description).Trim(); }
             set { throw new NotImplementedException(); }
