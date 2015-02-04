@@ -105,7 +105,7 @@ namespace Babbacombe.SockLib {
 
         public SendMultipartMessage CreateDefaultMessage() {
             var msg = new SendMultipartMessage();
-            msg.Items = Filenames.Select(f => new SendMultipartMessage.Item("file", f, true));
+            msg.Items = Filenames.Select(f => new SendMultipartMessage.Item(f));
             return msg;
         }
     }

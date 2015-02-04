@@ -225,6 +225,8 @@ namespace Babbacombe.SockLib {
                 if (IsFilename) ContentType = "text/plain";
             }
 
+            public Item(string filename) : this("file", filename, true) { }
+
             public string GetHeader() {
                 StringBuilder s = new StringBuilder();
                 s.AppendFormat("Content-Disposition: {0}; name = \"{1}\"", ContentDisposition, Name);
