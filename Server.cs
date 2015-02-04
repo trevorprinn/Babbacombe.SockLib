@@ -47,16 +47,17 @@ namespace Babbacombe.SockLib {
         }
 
         private void handleClient(TcpClient c) {
-            var client = CreateClient();
-            client.Server = this;
-            client.Client = c;
-            client.OnCreated();
+            using (var client = CreateClient()) {
+                client.Server = this;
+                client.Client = c;
+                client.OnCreated();
 
-            var header = new RecMessageHeader(client.Stream);
-            var msg = RecMessage.Create(header, client.Stream);
-            var reply = OnMessageReceived(client, msg);
-            reply.Id = string.IsNullOrWhiteSpace(header.Id) ? Guid.NewGuid().ToString() : header.Id;
-            client.SendReply(reply);
+                var header = new RecMessageHeader(client.Stream);
+                var msg = RecMessage.Create(header, client.Stream);
+                var reply = OnMessageReceived(client, msg);
+                reply.Id = string.IsNullOrWhiteSpace(header.Id) ? Guid.NewGuid().ToString() : header.Id;
+                client.SendReply(reply);
+            }
         }
 
         protected virtual SendMessage OnMessageReceived(ServerClient client, RecMessage message) {
