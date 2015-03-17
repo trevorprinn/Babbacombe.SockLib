@@ -39,6 +39,7 @@ namespace Babbacombe.SockLib {
             SendData(stream);
             stream.WriteByte((byte)'\n');
             stream.Write(delim, 0, delim.Length);
+            stream.WriteByte((byte)'\n');
             stream.Flush();
         }
     }

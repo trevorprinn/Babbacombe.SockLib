@@ -10,7 +10,10 @@ namespace Babbacombe.SockLib {
         private Stream _stream;
         public string Delimiter { get; private set; }
         private bool _endOfStream;
+        // Buffer for handling pushing back bytes that may have been a delimiter
         private Queue<int> _pushBackBuffer = new Queue<int>();
+        // Buffer for handling bytes that have been read past but need to be processed
+        private Queue<byte> _outerPushbackBuffer = new Queue<byte>();
         private const int BufferSize = 8192;
         private byte[] _buffer = new byte[BufferSize];
         private int _position;
@@ -48,28 +51,33 @@ namespace Babbacombe.SockLib {
             } while (cnt > 0);
         }
 
-        public bool EndOfStream { get { return _endOfStream && !_pushBackBuffer.Any(); } }
+        public bool EndOfStream { get { return _endOfStream && !_pushBackBuffer.Any() && !_outerPushbackBuffer.Any();  } }
 
         public override int Read(byte[] buffer, int offset, int count) {
             bool delimiterReached = false;
-            if (_endOfStream && !_pushBackBuffer.Any()) return 0;
+            if (_endOfStream && !_outerPushbackBuffer.Any() && !_pushBackBuffer.Any()) return 0;
 
-            List<int> delimiterBuffer = new List<int>();
+            List<int> delimiterBuffer = new List<int>(100);
             int delimCount = 0; // Count of how many delimiter characters have been read and matched (not inc \r\n)
             int bytesRead = 0;
             while (bytesRead < count && !delimiterReached) {
-                int ch = ReadByte();
+                int ch = readByte();
                 if (ch < 0) {
                     _endOfStream = true;
-                    if (delimiterBuffer.Any()) {
-                        // Push back any delimiter data that has been held aside.
-                        pushback(delimiterBuffer);
-                        delimCount = 0;
-                        continue;
-                    }
+                    return 0;
+                    //if (delimiterBuffer.Any()) {
+                    //    // Push back any delimiter data that has been held aside.
+                    //    pushback(delimiterBuffer);
+                    //    delimCount = 0;
+                    //    continue;
+                    //}
                 }
                 if (!_pushBackBuffer.Any() && (ch == '\n' || ch == '\r')) {
-                    if (delimCount == 0) {
+                    if (delimiterBuffer.Contains('\n')) {
+                        // Found 2 new lines in a row.
+                        pushback(delimiterBuffer, ch);
+                        delimCount = 0;
+                    } else if (delimCount == 0) {
                         // Possibly at or near start of delimiter
                         delimiterBuffer.Add(ch);
                     } else {
@@ -85,6 +93,8 @@ namespace Babbacombe.SockLib {
                         delimCount++;
                         if (delimCount == Delimiter.Length) {
                             // Found the delimiter
+                            // Read to the end of the line
+                            do { ch = readByte(); } while (ch >= 0 && ch != '\n');
                             _endOfStream = delimiterReached = true;
                         }
                     } else {
@@ -101,6 +111,7 @@ namespace Babbacombe.SockLib {
 
         private int readByte() {
             if (_pushBackBuffer.Any()) return _pushBackBuffer.Dequeue();
+            if (_outerPushbackBuffer.Any()) return _outerPushbackBuffer.Dequeue();
             if (_endOfStream) return -1;
             if (_position >= _bufferCount) {
                 _position = 0;
@@ -111,20 +122,25 @@ namespace Babbacombe.SockLib {
         }
 
         public byte[] GetOverrun() {
-            if (_position >= _bufferCount) return new byte[0];
-            var overrun = new byte[_bufferCount - _position];
-            Array.Copy(_buffer, _position, overrun, 0, overrun.Length);
-            return overrun;
+            if (_position >= _bufferCount && !_outerPushbackBuffer.Any()) return new byte[0];
+            List<byte> overrun = new List<byte>(_outerPushbackBuffer);
+            _outerPushbackBuffer.Clear();
+            if (_position < _bufferCount) {
+                var bufoverrun = new byte[_bufferCount - _position];
+                Array.Copy(_buffer, _position, bufoverrun, 0, bufoverrun.Length);
+                overrun.AddRange(bufoverrun);
+            }
+            return overrun.ToArray();
         }
 
         public void PushbackOverrun(byte[] overrun) {
-            List<int> o = overrun.Select(b => (int)b).ToList();
-            o.AddRange(_pushBackBuffer.ToArray());
-            _pushBackBuffer = new Queue<int>(o);
+            _outerPushbackBuffer.Requeue(overrun);
         }
 
         public override int ReadByte() {
-            return readByte();
+            var buf = new byte[1];
+            var c = Read(buf, 0, 1);
+            return c == 0 ? -1 : buf[0];
         }
 
         private void pushback(List<int> data, int ch = -1) {
@@ -174,6 +190,31 @@ namespace Babbacombe.SockLib {
 
         public override long Length {
             get { throw new NotImplementedException(); }
+        }
+    }
+
+    internal static class QueueExtensions {
+
+        /// <summary>
+        /// Puts the values at the start of the queue
+        /// </summary>
+        /// <param name="q"></param>
+        /// <param name="values"></param>
+        internal static void Requeue<T>(this Queue<T> q, IEnumerable<T> values) {
+            List<T> l = new List<T>(values);
+            l.AddRange(q);
+            q.Clear();
+            foreach (var v in l) q.Enqueue(v);
+        }
+
+        /// <summary>
+        /// Puts the value at the start of the queue
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="q"></param>
+        /// <param name="value"></param>
+        internal static void Requeue<T>(this Queue<T> q, T value) {
+            q.Requeue(new T[] { value });
         }
     }
 }
