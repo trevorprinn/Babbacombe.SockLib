@@ -65,12 +65,6 @@ namespace Babbacombe.SockLib {
                 if (ch < 0) {
                     _endOfStream = true;
                     return 0;
-                    //if (delimiterBuffer.Any()) {
-                    //    // Push back any delimiter data that has been held aside.
-                    //    pushback(delimiterBuffer);
-                    //    delimCount = 0;
-                    //    continue;
-                    //}
                 }
                 if (!_pushBackBuffer.Any() && (ch == '\n' || ch == '\r')) {
                     if (delimiterBuffer.Contains('\n')) {

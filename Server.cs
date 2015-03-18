@@ -25,6 +25,16 @@ namespace Babbacombe.SockLib {
         }
         public event EventHandler<MessageReceivedEventArgs> MessageReceived;
 
+        public class FilenamesMessageReceivedEventArgs : MessageReceivedEventArgs {
+            public new RecFilenamesMessage Message { get { return (RecFilenamesMessage)base.Message; } }
+
+            public FilenamesMessageReceivedEventArgs(ServerClient client, RecFilenamesMessage message)
+                : base(client, message) {
+                    Reply = new SendMultipartMessage("", Message.Filenames.Select(f => new SendMultipartMessage.Item(f)));
+            }
+        }
+        public event EventHandler<FilenamesMessageReceivedEventArgs> FilenamesMessageReceived;
+
         public Server(int port) {
             _listener = new TcpListener(IPAddress.Parse("127.0.0.1"), port);
             _listenThread = new Thread(new ThreadStart(listen));
@@ -54,10 +64,22 @@ namespace Babbacombe.SockLib {
 
                 var header = new RecMessageHeader(client.Stream);
                 var msg = RecMessage.Create(header, client.Stream);
-                var reply = OnMessageReceived(client, msg);
+                SendMessage reply = null;
+                if (msg is RecFilenamesMessage) {
+                    reply = OnFilenamesMessageReceived(client, (RecFilenamesMessage)msg);
+                }
+                if (reply == null) {
+                    reply = OnMessageReceived(client, msg);
+                }
                 reply.Id = string.IsNullOrWhiteSpace(header.Id) ? Guid.NewGuid().ToString() : header.Id;
                 client.SendReply(reply);
             }
+        }
+
+        protected virtual SendMessage OnFilenamesMessageReceived(ServerClient client, RecFilenamesMessage message) {
+            var ea = new FilenamesMessageReceivedEventArgs(client, message);
+            if (FilenamesMessageReceived != null) FilenamesMessageReceived(this, ea);
+            return ea.Reply;
         }
 
         protected virtual SendMessage OnMessageReceived(ServerClient client, RecMessage message) {
