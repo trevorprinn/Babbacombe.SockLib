@@ -35,8 +35,14 @@ namespace Babbacombe.SockLib {
         }
         public event EventHandler<FilenamesMessageReceivedEventArgs> FilenamesMessageReceived;
 
-        public Server(int port) {
-            _listener = new TcpListener(IPAddress.Parse("127.0.0.1"), port);
+        public Server(int port) : this("127.0.0.1", port) { }
+
+        public Server(string address, int port) : this(IPAddress.Parse(address), port) { }
+
+        public Server(IPAddress address, int port) : this(new IPEndPoint(address, port)) { }
+
+        public Server(IPEndPoint address) {
+            _listener = new TcpListener(address);
             _listenThread = new Thread(new ThreadStart(listen));
             _listener.Start();
             _listenThread.Start();
