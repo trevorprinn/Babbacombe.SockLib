@@ -21,11 +21,6 @@ namespace Babbacombe.SockLib {
         private int _position;
         private int _bufferCount;
 
-        public DelimitedStream(Stream stream, string delimiter) {
-            _stream = stream;
-            Delimiter = delimiter;
-        }
-
         public DelimitedStream(Stream stream) {
             _stream = stream;
             Delimiter = ReadLine();
