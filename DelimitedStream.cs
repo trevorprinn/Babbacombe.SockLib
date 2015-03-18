@@ -9,6 +9,8 @@ namespace Babbacombe.SockLib {
     internal class DelimitedStream : Stream {
         private Stream _stream;
         public string Delimiter { get; private set; }
+        // Flag that the end of the input stream has been reached. There may still be buffered data to be
+        // read from this object.
         private bool _endOfStream;
         // Buffer for handling pushing back bytes that may have been a delimiter
         private Queue<int> _pushBackBuffer = new Queue<int>();
@@ -128,7 +130,7 @@ namespace Babbacombe.SockLib {
         }
 
         public void PushbackOverrun(byte[] overrun) {
-            _outerPushbackBuffer.Requeue(overrun);
+            _outerPushbackBuffer = _outerPushbackBuffer.Requeue(overrun);
         }
 
         public override int ReadByte() {
@@ -194,21 +196,22 @@ namespace Babbacombe.SockLib {
         /// </summary>
         /// <param name="q"></param>
         /// <param name="values"></param>
-        internal static void Requeue<T>(this Queue<T> q, IEnumerable<T> values) {
+        /// <returns>A new queue with the values placed at the start.</returns>
+        internal static Queue<T> Requeue<T>(this Queue<T> q, IEnumerable<T> values) {
             List<T> l = new List<T>(values);
             l.AddRange(q);
-            q.Clear();
-            foreach (var v in l) q.Enqueue(v);
+            return new Queue<T>(l);
         }
-
+        
         /// <summary>
         /// Puts the value at the start of the queue
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="q"></param>
         /// <param name="value"></param>
-        internal static void Requeue<T>(this Queue<T> q, T value) {
-            q.Requeue(new T[] { value });
+        /// <returns>A new queue with the value placed at the start.</returns>
+        internal static Queue<T> Requeue<T>(this Queue<T> q, T value) {
+            return q.Requeue(new T[] { value });
         }
     }
 }
