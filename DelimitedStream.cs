@@ -61,7 +61,7 @@ namespace Babbacombe.SockLib {
                 int ch = readByte();
                 if (ch < 0) {
                     _endOfStream = true;
-                    return 0;
+                    return bytesRead;
                 }
                 if (!_pushBackBuffer.Any() && (ch == '\n' || ch == '\r')) {
                     if (delimiterBuffer.Contains('\n')) {
@@ -147,7 +147,7 @@ namespace Babbacombe.SockLib {
         public string ReadLine() {
             if (EndOfStream) return null;
             var buf = new StringBuilder();
-            int ch = readByte();
+            int ch = ReadByte();
             while (ch >= 0 && ch != '\n') {
                 buf.Append((char)ch);
                 ch = readByte();
