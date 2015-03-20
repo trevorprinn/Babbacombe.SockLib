@@ -16,7 +16,7 @@ namespace Babbacombe.SockLib {
 
         protected abstract void SendData(Stream stream);
 
-        public void Send(Stream stream) {
+        internal void Send(Stream stream) {
             var delim = Encoding.UTF8.GetBytes(new string('-', 29) + Guid.NewGuid().ToString());
             stream.Write(delim, 0, delim.Length);
             stream.WriteByte((byte)'\n');
@@ -130,6 +130,7 @@ namespace Babbacombe.SockLib {
     }
 
     public class SendBinaryMessage : SendMessage {
+        public byte[] Data { get; set; }
         public Stream DataStream { get; set; }
 
         protected override MessageTypes Type {
@@ -138,14 +139,24 @@ namespace Babbacombe.SockLib {
 
         public SendBinaryMessage() { }
 
+        public SendBinaryMessage(string command, byte[] data) {
+            Command = command;
+            Data = data;
+        }
+
         public SendBinaryMessage(string command, Stream stream = null) {
             Command = command;
-            SendData(stream);
+            DataStream = stream;
         }
 
         protected override void SendData(Stream stream) {
-            if (DataStream == null) return;
-            DataStream.CopyTo(stream);
+            if (Data != null) {
+                using (var mem = new MemoryStream(Data)) {
+                    mem.CopyTo(stream);
+                }
+            } else if (DataStream != null) {
+                DataStream.CopyTo(stream);
+            }
         }
     }
 
@@ -189,16 +200,19 @@ namespace Babbacombe.SockLib {
     }
 
     public class SendMultipartMessage : SendMessage {
-        private List<Item> _items = new List<Item>();
+        public List<BaseItem> Items = new List<BaseItem>();
 
-        public class GetFileDataEventArgs : EventArgs {
-            public Item Item { get; private set; }
+        public class GetItemStreamEventArgs : EventArgs {
+            public BaseItem Item { get; private set; }
             public Stream Stream { get; set; }
-            public GetFileDataEventArgs(Item item) {
+            public GetItemStreamEventArgs(BaseItem item) {
                 Item = item;
             }
+
+            public string ItemName { get { return Item.Name; } }
+            public string Filename { get { return Item is FileItem ? ((FileItem)Item).Filename : null; } }
         }
-        public event EventHandler<GetFileDataEventArgs> GetFileData;
+        public event EventHandler<GetItemStreamEventArgs> GetItemStream;
 
         protected override MessageTypes Type {
             get { return MessageTypes.Multipart; }
@@ -206,60 +220,103 @@ namespace Babbacombe.SockLib {
 
         public SendMultipartMessage() { }
 
-        public SendMultipartMessage(string command, IEnumerable<Item> items = null) {
+        public SendMultipartMessage(string command, IEnumerable<BaseItem> items = null) {
             Command = command;
-            Items = items;
+            Items = items.ToList();
         }
 
-        public class Item {
-            public string Name { get; private set; }
-            public string Data { get; private set; }
-            public bool IsFilename { get; private set; }
-            public string ContentDisposition { get; set; }
-            public string ContentType { get; set; }
-
-            public Item(string name, string data, bool isFilename = false) {
-                Name = name;
-                IsFilename = isFilename;
-                Data = data;
-                ContentDisposition = "form-data";
-                if (IsFilename) ContentType = "text/plain";
+        public abstract class BaseItem : Dictionary<string, string> {
+            protected BaseItem(string name) {
+                this["Name"] = name;
             }
 
-            public Item(string filename) : this("file", filename, true) { }
-
-            public string GetHeader() {
+            public virtual string GetHeader() {
                 StringBuilder s = new StringBuilder();
-                s.AppendFormat("Content-Disposition: {0}; name = \"{1}\"", ContentDisposition, Name);
-                if (IsFilename) {
-                    s.AppendFormat("; filename=\"{0}\"", Path.GetFileName(Data));
-                }
-                if (ContentType != null) {
-                    s.AppendLine();
-                    s.AppendFormat("Content-Type: {0}", ContentType);
+                foreach (var f in this) {
+                    if (s.Length > 0) s.Append("; ");
+                    s.AppendFormat("{0}: {1}", f.Key, f.Value);
                 }
                 s.AppendLine();
                 return s.ToString();
             }
-        }
 
-        public IEnumerable<Item> Items {
-            get { return _items; }
-            set {
-                _items.Clear();
-                if (value != null) _items.AddRange(value);
+            public abstract bool DataIsStream { get; }
+
+            protected internal virtual void SendData(Stream s) { }
+
+            public string Name { get { return this["Name"]; } }
+
+            public new string this[string field] {
+                get { return ContainsKey(field) ? base[field] : null; }
+                set {
+                    if (ContainsKey(field)) {
+                        base[field] = value;
+                    } else {
+                        Add(field, value);
+                    }
+                }
+            }
+
+            internal string Type {
+                get { return this["_type"]; }
+                set { this["_type"] = value; }
             }
         }
 
-        public Item AddItem(string name, string data, bool isFilename = false) {
-            var item = new Item(name, data, isFilename);
-            _items.Add(item);
-            return item;
+        public class StringItem : BaseItem {
+            public string Data { get; set; }
+
+            public StringItem(string name, string data) : base(name) {
+                Data = data;
+                Type = "String";
+            }
+
+            public override bool DataIsStream {
+                get { return false; }
+            }
+
+            protected internal override void SendData(Stream s) {
+                SendMultipartMessage.sendString(s, Data, false);
+            }
         }
 
-        protected virtual Stream OnGetFileData(Item item) {
-            var ea = new GetFileDataEventArgs(item);
-            if (GetFileData != null) GetFileData(this, ea);
+        public class BinaryItem : BaseItem {
+            public byte[] Data { get; set; }
+
+            public BinaryItem(string name, byte[] data = null)
+                : base(name) {
+                    Data = data;
+                    Type = "Binary";
+            }
+
+            public override bool DataIsStream {
+                get { return Data == null; }
+            }
+
+            protected internal override void SendData(Stream s) {
+                if (Data != null) s.Write(Data, 0, Data.Length);
+            }
+        }
+
+        public class FileItem : BaseItem {
+            public FileItem(string filename)
+                : this(Path.GetFileName(filename), filename) { }
+
+            public FileItem(string name, string filename) : base(name) {
+                this["Filename"] = filename;
+                Type = "File";
+            }
+
+            public string Filename { get { return this["Filename"]; } }
+
+            public override bool DataIsStream {
+                get { return true; }
+            }
+        }
+
+        protected virtual Stream OnGetItemStream(BaseItem item) {
+            var ea = new GetItemStreamEventArgs(item);
+            if (GetItemStream != null) GetItemStream(this, ea);
             return ea.Stream;
         }
 
@@ -268,27 +325,29 @@ namespace Babbacombe.SockLib {
             foreach (var item in Items) {
                 sendString(stream, delim);
                 sendString(stream, item.GetHeader());
-                if (item.IsFilename) {
-                    var datastream = OnGetFileData(item);
+
+                if (item.DataIsStream) {
+                    var datastream = OnGetItemStream(item);
                     var disposeStream = false;
-                    if (datastream == null && File.Exists(item.Data)) {
-                        datastream = File.OpenRead(item.Data);
+                    var fileItem = item as FileItem;
+                    if (datastream == null && fileItem != null && File.Exists(fileItem.Filename)) {
+                        datastream = File.OpenRead(fileItem.Filename);
                         disposeStream = true;
                     }
                     if (datastream != null) {
                         datastream.CopyTo(stream);
-                        sendString(stream, null);
                         if (disposeStream) datastream.Dispose();
                     }
                 } else {
-                    sendString(stream, item.Data);
+                    item.SendData(stream);
                 }
+                sendString(stream, null); // Send EOL before the terminating delimiter
                 sendString(stream, delim + "--");
             }
             stream.Flush();
         }
 
-        private void sendString(Stream s, string data, bool addEol = true) {
+        private static void sendString(Stream s, string data, bool addEol = true) {
             if (data == null) data = "";
             if (addEol) data = data + "\r\n";
             if (data == "") return;

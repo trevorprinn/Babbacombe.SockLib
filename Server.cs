@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
@@ -30,7 +31,7 @@ namespace Babbacombe.SockLib {
 
             public FilenamesMessageReceivedEventArgs(ServerClient client, RecFilenamesMessage message)
                 : base(client, message) {
-                    Reply = new SendMultipartMessage("", Message.Filenames.Select(f => new SendMultipartMessage.Item(f)));
+                    Reply = message.CreateDefaultMessage();
             }
         }
         public event EventHandler<FilenamesMessageReceivedEventArgs> FilenamesMessageReceived;

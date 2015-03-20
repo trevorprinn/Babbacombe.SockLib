@@ -51,17 +51,48 @@ namespace Babbacombe.SockLib {
         }
 
         /// <summary>
-        /// Information about the current file.
+        /// Information about the binary info currently being streamed.
         /// </summary>
-        public class FileInfo {
-            public IDictionary<string, string> Items { get; private set; }
-            private FileInfo() { }
-            internal FileInfo(IDictionary<string, string> items) {
-                Items = items;
+        public class BinaryInfo {
+            public IDictionary<string, string> Fields { get; private set; }
+            private BinaryInfo() { }
+            internal BinaryInfo(IDictionary<string, string> fields) {
+                Fields = fields;
             }
-            public string ContentType { get { return Items.ContainsKey("Content-Type") ? Items["Content-Type"] : null; } }
-            public string Filename { get { return Items.ContainsKey("filename") ? Items["filename"] : null; } }
-            public string Name { get { return Items.ContainsKey("name") ? Items["name"] : null; } }
+            public string Name { get { return Fields.ContainsKey("Name") ? Fields["Name"] : null; } }
+
+            /// <summary>
+            /// Reads the entire remainder of the stream into memory.
+            /// </summary>
+            /// <param name="s"></param>
+            /// <returns></returns>
+            public byte[] Read(Stream s) {
+                using (var mem = new MemoryStream(8192)) {
+                    s.CopyTo(mem);
+                    mem.Seek(0, SeekOrigin.Begin);
+                    return mem.ToArray();
+                }
+            }
+        }
+
+        public class BinaryUploadedEventArgs : EventArgs {
+            public BinaryInfo Info { get; private set; }
+            public Stream Contents { get; private set; }
+            private BinaryUploadedEventArgs() { }
+            internal BinaryUploadedEventArgs(BinaryInfo info, Stream contents) {
+                Info = info;
+                Contents = contents;
+            }
+        }
+
+        public event EventHandler<BinaryUploadedEventArgs> BinaryUploaded;
+
+        /// <summary>
+        /// Information about the file currently being streamed.
+        /// </summary>
+        public class FileInfo : BinaryInfo {
+            internal FileInfo(IDictionary<string, string> fields) : base(fields) { }
+            public string Filename { get { return Fields.ContainsKey("Filename") ? Fields["Filename"] : null; } }
         }
 
         public class FileUploadedEventArgs : EventArgs {
@@ -103,6 +134,10 @@ namespace Babbacombe.SockLib {
         /// </summary>
         public IEnumerable<DataItem> DataItems { get { return _dataItems; } }
 
+        protected virtual void OnBinaryUploaded(BinaryInfo info, Stream contents) {
+            if (BinaryUploaded != null) BinaryUploaded(this, new BinaryUploadedEventArgs(info, contents));
+        }
+
         protected virtual void OnFileUploaded(FileInfo info, Stream contents) {
             if (FileUploaded != null) FileUploaded(this, new FileUploadedEventArgs(info, contents));
         }
@@ -130,11 +165,14 @@ namespace Babbacombe.SockLib {
                         var headers = readHeaders(reader);
                         if (headers == null) break;
                         var headerData = parseHeaders(headers);
-                        if (headerData.ContainsKey("filename")) {
-                            var info = new FileInfo(headerData);
-                            OnFileUploaded(info, reader);
+                        var type = headerData.ContainsKey("_type") ? headerData["_type"] : "String";
+                        if (type == "Binary") {
+                            OnBinaryUploaded(new BinaryInfo(headerData), reader);
+                        }
+                        else if (type == "File") {
+                            OnFileUploaded(new FileInfo(headerData), reader);
                         } else {
-                            string name = headerData.ContainsKey("name") ? headerData["name"] : null;
+                            string name = headerData.ContainsKey("Name") ? headerData["Name"] : null;
                             string value;
                             using (var m = new MemoryStream()) {
                                 reader.CopyTo(m);
