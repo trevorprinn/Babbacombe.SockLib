@@ -23,7 +23,7 @@ namespace Babbacombe.SockLib {
 
         public DelimitedStream(Stream stream) {
             _stream = stream;
-            Delimiter = ReadLine();
+            Delimiter = readLine(true);
         }
 
         public override bool CanRead {
@@ -145,12 +145,16 @@ namespace Babbacombe.SockLib {
         /// </summary>
         /// <returns>null at the end of the stream.</returns>
         public string ReadLine() {
+            return readLine();
+        }
+
+        private string readLine(bool readingDelimiter = false) {
             if (EndOfStream) return null;
             var buf = new StringBuilder();
-            int ch = ReadByte();
+            int ch = readingDelimiter ? readByte() : ReadByte();
             while (ch >= 0 && ch != '\n') {
                 buf.Append((char)ch);
-                ch = readByte();
+                ch = readingDelimiter ? readByte() : ReadByte();
             }
             if (ch < 0) _endOfStream = true;
             if (_endOfStream && buf.Length == 0) return null;
