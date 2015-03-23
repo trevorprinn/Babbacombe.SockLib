@@ -201,7 +201,7 @@ namespace Babbacombe.SockLib {
 
         private IDictionary<string, string> parseHeaders(string headers) {
             Match propertiesMatch = Regex.Match(headers,
-                @"((?<Key>[^\:=]+)(?:[\=\:])(?:[\s]*)(?<Value>([^"";\s\r]+)|(""[^""]+""))(?:[;\s]*))+");
+                @"((?<Key>[^\:=]+)(?:[\=\:])(?:[\s]*)(?<Value>([^"";\r]+)|(""[^""]+""))(?:[;\s]*))+");
 
             var parsed = propertiesMatch.Groups["Key"].Captures.Cast<Capture>().Select((c, i) => new { c, i })
                 .Join(propertiesMatch.Groups["Value"].Captures.Cast<Capture>().Select((c, i) => new { c, i }), key => key.i, value => value.i,
