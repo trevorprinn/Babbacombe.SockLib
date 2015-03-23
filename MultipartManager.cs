@@ -183,7 +183,6 @@ namespace Babbacombe.SockLib {
                             OnDataReceived(headerData, name, value);
                         }
                         reader.SkipToEnd();
-                        mainstream.PushbackOverrun(reader.GetOverrun());
                     }
                 } while (!mainstream.EndOfStream);
             }

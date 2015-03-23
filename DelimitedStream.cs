@@ -190,5 +190,11 @@ namespace Babbacombe.SockLib {
         public override long Length {
             get { throw new NotImplementedException(); }
         }
+
+        protected override void Dispose(bool disposing) {
+            var outerStream = _stream as DelimitedStream;
+            if (outerStream != null) outerStream.PushbackOverrun(GetOverrun());
+            base.Dispose(disposing);
+        }
     }
 }
