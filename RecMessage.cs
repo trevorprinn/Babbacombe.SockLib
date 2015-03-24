@@ -30,6 +30,12 @@ namespace Babbacombe.SockLib {
                 default: throw new ApplicationException("Unknown message type received");
             }
         }
+
+        public string Command { get { return Header.Command; } }
+
+        public string Id { get { return Header.Id; } }
+
+        public MessageTypes Type { get { return Header.Type;}}
     }
 
     public class RecTextMessage : RecMessage {
