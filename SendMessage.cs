@@ -247,8 +247,13 @@ namespace Babbacombe.SockLib {
             public string Name { get { return this["Name"]; } }
 
             public new string this[string field] {
-                get { return ContainsKey(field) ? base[field] : null; }
+                get {
+                    string v = ContainsKey(field) ? base[field] : null;
+                    if (v == null || !v.StartsWith("\"") || !v.EndsWith("\"")) return v;
+                    return v.Substring(1, v.Length - 2);
+                }
                 set {
+                    if (value.Contains(' ')) value = '"' + value + '"';
                     if (ContainsKey(field)) {
                         base[field] = value;
                     } else {
