@@ -21,7 +21,6 @@ namespace Babbacombe.SockLib {
             public MessageReceivedEventArgs(ServerClient client, RecMessage message) {
                 Client = client;
                 Message = message;
-                Reply = new SendTextMessage();
             }
         }
         public event EventHandler<MessageReceivedEventArgs> MessageReceived;
@@ -69,17 +68,26 @@ namespace Babbacombe.SockLib {
                 client.Client = c;
                 client.OnCreated();
 
-                var header = new RecMessageHeader(client.Stream);
-                var msg = RecMessage.Create(header, client.Stream);
-                SendMessage reply = null;
-                if (msg is RecFilenamesMessage) {
-                    reply = OnFilenamesMessageReceived(client, (RecFilenamesMessage)msg);
-                }
-                if (reply == null) {
-                    reply = OnMessageReceived(client, msg);
-                }
-                reply.Id = string.IsNullOrWhiteSpace(header.Id) ? Guid.NewGuid().ToString() : header.Id;
-                client.SendReply(reply);
+                do {
+                    RecMessage msg;
+                    RecMessageHeader header;
+                    using (var recStream = new DelimitedStream(client.Client.GetStream())) {
+                        header = new RecMessageHeader(recStream);
+                        if (header.IsEmpty) break;
+                        msg = RecMessage.Create(header, recStream);
+                    }
+                    SendMessage reply = null;
+                    if (msg is RecFilenamesMessage) {
+                        reply = OnFilenamesMessageReceived(client, (RecFilenamesMessage)msg);
+                    }
+                    if (reply == null) {
+                        reply = OnMessageReceived(client, msg);
+                    }
+                    if (reply != null) {
+                        reply.Id = string.IsNullOrWhiteSpace(header.Id) ? Guid.NewGuid().ToString() : header.Id;
+                        client.SendMessage(reply);
+                    }
+                } while (true);
             }
         }
 

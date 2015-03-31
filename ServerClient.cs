@@ -11,7 +11,6 @@ namespace Babbacombe.SockLib {
     public class ServerClient : IDisposable {
         protected internal Server Server { get; internal set; }
         protected internal TcpClient Client { get; internal set; }
-        private DelimitedStream _stream;
 
         public event EventHandler Created;
 
@@ -26,22 +25,16 @@ namespace Babbacombe.SockLib {
 
         protected virtual void Dispose(bool disposing) {
             if (Client != null) {
-                _stream.Dispose();
                 Client.GetStream().Dispose();
                 Client.Close();
                 Client = null;
             }
         }
 
-        public Stream Stream {
-            get {
-                if (_stream == null) _stream = new DelimitedStream(Client.GetStream());
-                return _stream;
+        public virtual void SendMessage(SendMessage message) {
+            lock (this) {
+                message.Send(Client.GetStream());
             }
-        }
-
-        public virtual void SendReply(SendMessage message) {
-            message.Send(Client.GetStream());
         }
     }
 }
