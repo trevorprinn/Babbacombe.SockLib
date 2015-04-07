@@ -62,6 +62,10 @@ namespace Babbacombe.SockLib {
             }
         }
 
+        public async Task<RecMessage> TransactionAsync(SendMessage message) {
+            return await Task<RecMessage>.Run(() => Transaction(message));
+        }
+
         public void SendMessage(SendMessage message) {
             if (!_listening) throw new ListeningModeException(false);
             lock (this) {

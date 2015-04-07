@@ -188,6 +188,10 @@ namespace Babbacombe.SockLib {
             }
         }
 
+        public async Task ProcessAsync() {
+            await Task.Run(() => Process());
+        }
+
         private string readHeaders(DelimitedStream reader) {
             StringBuilder headers = new StringBuilder();
             string line = reader.ReadLine();
