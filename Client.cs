@@ -11,8 +11,11 @@ using System.Threading.Tasks;
 namespace Babbacombe.SockLib {
 
     public class Client : IDisposable {
+
+        public enum Modes {  Transaction, Listening }
+
         private TcpClient _client;
-        private bool _listening;
+        private Modes _mode = Modes.Transaction;
         private bool _stopListening;
         private NetworkStream _netStream;
 
@@ -26,9 +29,10 @@ namespace Babbacombe.SockLib {
         public event EventHandler<MessageReceivedEventArgs> MessageReceived;
         public event EventHandler ServerClosed;
 
-        public Client(string host, int port) {
+        public Client(string host, int port, Modes mode = Modes.Transaction) {
             _client = new TcpClient(host, port);
             _netStream = _client.GetStream();
+            Mode = mode;
         }
 
         protected virtual void OnTransactionComplete(RecMessage message) {
@@ -44,7 +48,7 @@ namespace Babbacombe.SockLib {
         }
 
         public void BeginTransaction(SendMessage message) {
-            if (_listening) throw new ListeningModeException(true);
+            if (_mode != Modes.Transaction) throw new ClientModeException(true);
             ThreadPool.QueueUserWorkItem((m) => {
                 var reply = Transaction((SendMessage)m);
                 OnTransactionComplete(reply);
@@ -52,7 +56,7 @@ namespace Babbacombe.SockLib {
         }
 
         public RecMessage Transaction(SendMessage message) {
-            if (_listening) throw new ListeningModeException(true);
+            if (_mode != Modes.Transaction) throw new ClientModeException(true);
             lock (this) {
                 message.Send(_client.GetStream());
                 var recStream = new DelimitedStream(_netStream);
@@ -67,17 +71,17 @@ namespace Babbacombe.SockLib {
         }
 
         public void SendMessage(SendMessage message) {
-            if (!_listening) throw new ListeningModeException(false);
+            if (_mode != Modes.Listening) throw new ClientModeException(false);
             lock (this) {
                 message.Send(_netStream);
             }
         }
 
-        public bool Listening {
-            get { return _listening; }
+        public Modes Mode {
+            get { return _mode; }
             set {
-                if (value == _listening) return;
-                if (_listening) {
+                if (value == _mode) return;
+                if (_mode == Modes.Listening) {
                     _stopListening = true;
                 } else {
                     var t = new Thread(new ThreadStart(listen));
@@ -86,7 +90,7 @@ namespace Babbacombe.SockLib {
                     _stopListening = false;
                     t.Start();
                 }
-                _listening = value;
+                _mode = value;
             }
         }
 
@@ -105,7 +109,7 @@ namespace Babbacombe.SockLib {
             } catch (SocketException) {
                 OnServerClosed();
             } finally {
-                _listening = false;
+                _mode = Modes.Transaction;
             }
         }
 
@@ -123,11 +127,11 @@ namespace Babbacombe.SockLib {
         }
     }
 
-    public class ListeningModeException : ApplicationException {
-        private ListeningModeException() { }
+    public class ClientModeException : ApplicationException {
+        private ClientModeException() { }
 
-        public ListeningModeException(bool inListeningMode)
-            : base(inListeningMode ? "Cannot run a transaction while in listening mode" : "Must be in listening mode to send a bare message") { }
+        public ClientModeException(bool inListeningMode)
+            : base(inListeningMode ? "Cannot run a transaction while in Listening mode" : "Cannot send a bare message in Transaction mode") { }
     }
 
 }
