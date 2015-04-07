@@ -31,7 +31,7 @@ namespace Babbacombe.SockLib {
             }
         }
 
-        public virtual void SendMessage(SendMessage message) {
+        public void SendMessage(SendMessage message) {
             lock (this) {
                 message.Send(Client.GetStream());
             }

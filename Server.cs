@@ -14,6 +14,8 @@ namespace Babbacombe.SockLib {
         private Thread _listenThread;
         private bool _stop;
 
+        private List<ServerClient> _clients = new List<ServerClient>();
+
         public class MessageReceivedEventArgs : EventArgs {
             public ServerClient Client { get; private set; }
             public RecMessage Message { get; private set; }
@@ -68,26 +70,32 @@ namespace Babbacombe.SockLib {
                 client.Client = c;
                 client.OnCreated();
 
-                do {
-                    RecMessage msg;
-                    RecMessageHeader header;
-                    using (var recStream = new DelimitedStream(client.Client.GetStream())) {
-                        header = new RecMessageHeader(recStream);
-                        if (header.IsEmpty) break;
-                        msg = RecMessage.Create(header, recStream);
-                    }
-                    SendMessage reply = null;
-                    if (msg is RecFilenamesMessage) {
-                        reply = OnFilenamesMessageReceived(client, (RecFilenamesMessage)msg);
-                    }
-                    if (reply == null) {
-                        reply = OnMessageReceived(client, msg);
-                    }
-                    if (reply != null) {
-                        reply.Id = string.IsNullOrWhiteSpace(header.Id) ? Guid.NewGuid().ToString() : header.Id;
-                        client.SendMessage(reply);
-                    }
-                } while (true);
+                lock (_clients) _clients.Add(client);
+
+                try {
+                    do {
+                        RecMessage msg;
+                        RecMessageHeader header;
+                        using (var recStream = new DelimitedStream(client.Client.GetStream())) {
+                            header = new RecMessageHeader(recStream);
+                            if (header.IsEmpty) break;
+                            msg = RecMessage.Create(header, recStream);
+                        }
+                        SendMessage reply = null;
+                        if (msg is RecFilenamesMessage) {
+                            reply = OnFilenamesMessageReceived(client, (RecFilenamesMessage)msg);
+                        }
+                        if (reply == null) {
+                            reply = OnMessageReceived(client, msg);
+                        }
+                        if (reply != null) {
+                            reply.Id = string.IsNullOrWhiteSpace(header.Id) ? Guid.NewGuid().ToString() : header.Id;
+                            client.SendMessage(reply);
+                        }
+                    } while (true);
+                } finally {
+                    lock (_clients) _clients.Remove(client);
+                }
             }
         }
 
@@ -107,6 +115,10 @@ namespace Babbacombe.SockLib {
             return new ServerClient();
         }
 
+        public IEnumerable<ServerClient> Clients {
+            get { return _clients; }
+        }
+
         public void Dispose() {
             Dispose(true);
             GC.SuppressFinalize(this);
@@ -119,5 +131,15 @@ namespace Babbacombe.SockLib {
             }
         }
 
+        public void Broadcast(SendMessage message, IEnumerable<ServerClient> clients = null) {
+            lock (_clients) {
+                if (clients == null) clients = _clients;
+                foreach (var c in clients) {
+                    if (_clients.Contains(c)) {
+                        c.SendMessage(message);
+                    }
+                }
+            }
+        }
     }
 }
