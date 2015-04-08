@@ -187,6 +187,17 @@ namespace Babbacombe.SockLib {
             }
         }
 
+        /// <summary>
+        /// Not implemented, because it will cause threading errors.
+        /// </summary>
+        /// <param name="destination"></param>
+        /// <param name="bufferSize"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        public override Task CopyToAsync(Stream destination, int bufferSize, System.Threading.CancellationToken cancellationToken) {
+            throw new NotImplementedException();
+        }
+
         public override long Length {
             get { throw new NotImplementedException(); }
         }
