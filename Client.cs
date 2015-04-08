@@ -12,12 +12,15 @@ namespace Babbacombe.SockLib {
 
     public class Client : IDisposable {
 
-        public enum Modes {  Transaction, Listening }
+        public enum Modes { Transaction, Listening }
 
         private TcpClient _client;
         private Modes _mode = Modes.Transaction;
         private bool _stopListening;
         private NetworkStream _netStream;
+        public bool ExceptionOnStatus { get; set; }
+
+        private Func<SendMessage, RecMessage> _trans;
 
         public class MessageReceivedEventArgs : EventArgs {
             public RecMessage Message { get; private set; }
@@ -25,7 +28,6 @@ namespace Babbacombe.SockLib {
                 Message = message;
             }
         }
-        public event EventHandler<MessageReceivedEventArgs> TransactionComplete;
         public event EventHandler<MessageReceivedEventArgs> MessageReceived;
         public event EventHandler ServerClosed;
 
@@ -33,10 +35,7 @@ namespace Babbacombe.SockLib {
             _client = new TcpClient(host, port);
             _netStream = _client.GetStream();
             Mode = mode;
-        }
-
-        protected virtual void OnTransactionComplete(RecMessage message) {
-            if (TransactionComplete != null) TransactionComplete(this, new MessageReceivedEventArgs(message));
+            _trans = Transaction;
         }
 
         protected virtual void OnMessageReceived(RecMessage message) {
@@ -47,22 +46,25 @@ namespace Babbacombe.SockLib {
             if (ServerClosed != null) ServerClosed(this, EventArgs.Empty);
         }
 
-        public void BeginTransaction(SendMessage message) {
+        public IAsyncResult BeginTransaction(SendMessage message, AsyncCallback callback = null, object data = null) {
             if (_mode != Modes.Transaction) throw new ClientModeException(true);
-            ThreadPool.QueueUserWorkItem((m) => {
-                var reply = Transaction((SendMessage)m);
-                OnTransactionComplete(reply);
-            }, message);
+            return _trans.BeginInvoke(message, callback, data);
+        }
+
+        public RecMessage EndTransaction(IAsyncResult cookie) {
+            return _trans.EndInvoke(cookie);
         }
 
         public RecMessage Transaction(SendMessage message) {
             if (_mode != Modes.Transaction) throw new ClientModeException(true);
             lock (this) {
-                message.Send(_client.GetStream());
+                message.Send(_netStream);
                 var recStream = new DelimitedStream(_netStream);
                 var header = new RecMessageHeader(recStream);
                 if (header.IsEmpty) return null;
-                return RecMessage.Create(header, recStream);
+                var reply = RecMessage.Create(header, recStream);
+                if (ExceptionOnStatus && reply is RecStatusMessage) throw new StatusException((RecStatusMessage)reply);
+                return reply;
             }
         }
 
@@ -102,8 +104,8 @@ namespace Babbacombe.SockLib {
                         Thread.Sleep(20);
                     } else {
                         var clientStream = new DelimitedStream(_netStream);
-                            var header = new RecMessageHeader(clientStream);
-                            OnMessageReceived(RecMessage.Create(header, clientStream));
+                        var header = new RecMessageHeader(clientStream);
+                        OnMessageReceived(RecMessage.Create(header, clientStream));
                     }
                 } while (!_stopListening);
             } catch (SocketException) {
@@ -120,7 +122,6 @@ namespace Babbacombe.SockLib {
 
         protected virtual void Dispose(bool disposing) {
             if (_client != null) {
-                //_client.GetStream().Dispose();
                 _client.Close();
                 _client = null;
             }
@@ -132,6 +133,25 @@ namespace Babbacombe.SockLib {
 
         public ClientModeException(bool inListeningMode)
             : base(inListeningMode ? "Cannot run a transaction while in Listening mode" : "Cannot send a bare message in Transaction mode") { }
+    }
+
+    public class StatusException : ApplicationException {
+        private StatusException() { }
+        public RecStatusMessage StatusMessage { get; private set; }
+
+        public StatusException(RecStatusMessage statusMessage) {
+            StatusMessage = statusMessage;
+        }
+
+        public override string Message {
+            get {
+                return StatusMessage.StatusMessage;
+            }
+        }
+
+        public override string ToString() {
+            return string.Format("{0} {1}", StatusMessage.Status, base.ToString());
+        }
     }
 
 }
