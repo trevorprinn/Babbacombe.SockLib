@@ -37,6 +37,8 @@ namespace Babbacombe.SockLib {
         }
         public event EventHandler<FilenamesMessageReceivedEventArgs> FilenamesMessageReceived;
 
+        public Dictionary<string, Func<ServerClient, RecMessage, SendMessage>> Handlers = new Dictionary<string, Func<ServerClient, RecMessage, SendMessage>>();
+
         public Server(int port) : this("127.0.0.1", port) { }
 
         public Server(string address, int port) : this(IPAddress.Parse(address), port) { }
@@ -82,11 +84,16 @@ namespace Babbacombe.SockLib {
                             msg = RecMessage.Create(header, recStream);
                         }
                         SendMessage reply = null;
-                        if (msg is RecFilenamesMessage) {
-                            reply = OnFilenamesMessageReceived(client, (RecFilenamesMessage)msg);
-                        }
-                        if (reply == null) {
-                            reply = OnMessageReceived(client, msg);
+                        if (Handlers.ContainsKey(msg.Command)) {
+                            var handler = Handlers[msg.Command];
+                            reply = handler.Invoke(client, msg);
+                        } else {
+                            if (msg is RecFilenamesMessage) {
+                                reply = OnFilenamesMessageReceived(client, (RecFilenamesMessage)msg);
+                            }
+                            if (reply == null) {
+                                reply = OnMessageReceived(client, msg);
+                            }
                         }
                         if (reply != null) {
                             reply.Id = string.IsNullOrWhiteSpace(header.Id) ? Guid.NewGuid().ToString() : header.Id;

@@ -31,6 +31,8 @@ namespace Babbacombe.SockLib {
         public event EventHandler<MessageReceivedEventArgs> MessageReceived;
         public event EventHandler ServerClosed;
 
+        public Dictionary<string, Action<Client, RecMessage>> Handlers = new Dictionary<string, Action<Client, RecMessage>>();
+
         public Client(string host, int port, Modes mode = Modes.Transaction) {
             _client = new TcpClient(host, port);
             _netStream = _client.GetStream();
@@ -105,7 +107,17 @@ namespace Babbacombe.SockLib {
                     } else {
                         var clientStream = new DelimitedStream(_netStream);
                         var header = new RecMessageHeader(clientStream);
-                        OnMessageReceived(RecMessage.Create(header, clientStream));
+                        if (header == null) {
+                            // This shouldn't happen.
+                            OnServerClosed();
+                            break;
+                        }
+                        var msg = RecMessage.Create(header, clientStream);
+                        if (Handlers.ContainsKey(header.Command)) {
+                            CallHandler(msg);
+                        } else {
+                            OnMessageReceived(RecMessage.Create(header, clientStream));
+                        }
                     }
                 } while (!_stopListening);
             } catch (SocketException) {
@@ -124,6 +136,13 @@ namespace Babbacombe.SockLib {
             if (_client != null) {
                 _client.Close();
                 _client = null;
+            }
+        }
+
+        public void CallHandler(RecMessage recMessage) {
+            if (Handlers.ContainsKey(recMessage.Command)) {
+                var handler = Handlers[recMessage.Command];
+                handler.Invoke(this, recMessage);
             }
         }
     }
