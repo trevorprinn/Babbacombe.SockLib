@@ -117,9 +117,23 @@ namespace Babbacombe.SockLib {
     }
 
     public class RecBinaryMessage : RecMessage {
+        private byte[] _data;
         public new Stream Stream { get { return base.Stream; } }
 
         internal RecBinaryMessage(RecMessageHeader header, Stream stream) : base(header, stream) { }
+
+        public byte[] Data {
+            get {
+                if (_data == null) {
+                    using (var mem = new MemoryStream()) {
+                        Stream.CopyTo(mem);
+                        mem.Seek(0, SeekOrigin.Begin);
+                        _data = mem.ToArray();
+                    }
+                }
+                return _data;
+            }
+        }
     }
 
     public class RecFilenamesMessage : RecTextMessage {

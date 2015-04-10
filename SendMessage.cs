@@ -140,7 +140,10 @@ namespace Babbacombe.SockLib {
 
         public SendXmlMessage() { }
 
-        public SendXmlMessage(string command, string text = null) : base(command, text) { }
+        public SendXmlMessage(string command, XDocument document)
+            : base(command, document.ToString()) {
+                _document = document;
+        }
 
         public XDocument Document {
             get { return _document; }
@@ -153,7 +156,7 @@ namespace Babbacombe.SockLib {
 
     public class SendBinaryMessage : SendMessage {
         public byte[] Data { get; set; }
-        public Stream DataStream { get; set; }
+        public Stream Stream { get; set; }
 
         protected override MessageTypes Type {
             get { return MessageTypes.Binary; }
@@ -168,7 +171,7 @@ namespace Babbacombe.SockLib {
 
         public SendBinaryMessage(string command, Stream stream = null) {
             Command = command;
-            DataStream = stream;
+            Stream = stream;
         }
 
         protected override void SendData(Stream stream) {
@@ -176,8 +179,8 @@ namespace Babbacombe.SockLib {
                 using (var mem = new MemoryStream(Data)) {
                     mem.CopyTo(stream);
                 }
-            } else if (DataStream != null) {
-                DataStream.CopyTo(stream);
+            } else if (Stream != null) {
+                Stream.CopyTo(stream);
             }
         }
     }
