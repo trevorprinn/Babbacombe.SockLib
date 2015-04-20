@@ -42,6 +42,9 @@ namespace Babbacombe.SockLib {
         private NetworkStream _netStream;
         public bool ExceptionOnStatus { get; set; }
 
+        public string Host { get; private set; }
+        public int Port { get; private set; }
+
         private Func<SendMessage, RecMessage> _trans;
 
         public class MessageReceivedEventArgs : EventArgs {
@@ -55,11 +58,37 @@ namespace Babbacombe.SockLib {
 
         public Dictionary<string, Action<Client, RecMessage>> Handlers = new Dictionary<string, Action<Client, RecMessage>>();
 
+        public Exception LastException { get; private set; }
+
+        private Thread _listeningThread;
+
         public Client(string host, int port, Modes mode = Modes.Transaction) {
-            _client = new TcpClient(host, port);
-            _netStream = _client.GetStream();
+            Host = host;
+            Port = port;
             Mode = mode;
             _trans = Transaction;
+        }
+
+        public bool Open() {
+            if (IsOpen) Close();
+            try {
+                _client = new TcpClient(Host, Port);
+                _netStream = _client.GetStream();
+            } catch (Exception ex) {
+                LastException = ex;
+                return false;
+            }
+            if (Mode == Modes.Listening) startListening();
+            return true;
+        }
+
+        public void Close() {
+            if (!IsOpen) return;
+            if (_listeningThread != null) _stopListening = true;
+            while (_listeningThread != null) Thread.Sleep(20);
+            _client.Close();
+            _netStream = null;
+            _client = null;
         }
 
         protected virtual void OnMessageReceived(RecMessage message) {
@@ -81,6 +110,7 @@ namespace Babbacombe.SockLib {
 
         public RecMessage Transaction(SendMessage message) {
             if (_mode != Modes.Transaction) throw new ClientModeException(true);
+            if (!IsOpen) throw new NotOpenException();
             lock (this) {
                 message.Send(_netStream);
                 var recStream = new DelimitedStream(_netStream);
@@ -93,11 +123,13 @@ namespace Babbacombe.SockLib {
         }
 
         public async Task<RecMessage> TransactionAsync(SendMessage message) {
+            if (!IsOpen) throw new NotOpenException();
             return await Task<RecMessage>.Run(() => Transaction(message));
         }
 
         public void SendMessage(SendMessage message) {
             if (_mode != Modes.Listening) throw new ClientModeException(false);
+            if (!IsOpen) throw new NotOpenException();
             lock (this) {
                 message.Send(_netStream);
             }
@@ -109,15 +141,21 @@ namespace Babbacombe.SockLib {
                 if (value == _mode) return;
                 if (_mode == Modes.Listening) {
                     _stopListening = true;
-                } else {
-                    var t = new Thread(new ThreadStart(listen));
-                    t.Name = "SockLib client listener";
-                    t.IsBackground = true;
-                    _stopListening = false;
-                    t.Start();
+                    while (_listeningThread != null) Thread.Sleep(20);
+                } else if (IsOpen) {
+                    startListening();
                 }
                 _mode = value;
             }
+        }
+
+        private void startListening() {
+            if (_listeningThread != null) return;
+            _listeningThread = new Thread(new ThreadStart(listen));
+            _listeningThread.Name = "SockLib client listener";
+            _listeningThread.IsBackground = true;
+            _stopListening = false;
+            _listeningThread.Start();
         }
 
         private void listen() {
@@ -131,6 +169,7 @@ namespace Babbacombe.SockLib {
                         var header = new RecMessageHeader(clientStream);
                         if (header == null) {
                             // This shouldn't happen.
+                            Close();
                             OnServerClosed();
                             break;
                         }
@@ -142,10 +181,16 @@ namespace Babbacombe.SockLib {
                         }
                     }
                 } while (!_stopListening);
-            } catch (SocketException) {
+            } catch (IOException ex) {
+                LastException = ex;
+                Close();
+                OnServerClosed();
+            } catch (SocketException ex) {
+                LastException = ex;
+                Close();
                 OnServerClosed();
             } finally {
-                _mode = Modes.Transaction;
+                _listeningThread = null;
             }
         }
 
@@ -155,10 +200,7 @@ namespace Babbacombe.SockLib {
         }
 
         protected virtual void Dispose(bool disposing) {
-            if (_client != null) {
-                _client.Close();
-                _client = null;
-            }
+            if (_client != null) Close();
         }
 
         public void CallHandler(RecMessage recMessage) {
@@ -166,6 +208,10 @@ namespace Babbacombe.SockLib {
                 var handler = Handlers[recMessage.Command];
                 handler.Invoke(this, recMessage);
             }
+        }
+
+        public bool IsOpen {
+            get { return _client != null; }
         }
     }
 
@@ -193,6 +239,10 @@ namespace Babbacombe.SockLib {
         public override string ToString() {
             return string.Format("{0} {1}", StatusMessage.Status, base.ToString());
         }
+    }
+
+    public class NotOpenException : ApplicationException {
+        public NotOpenException() : base("The SockLib client is not open") { }
     }
 
 }
