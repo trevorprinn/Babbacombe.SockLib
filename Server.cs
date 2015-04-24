@@ -96,14 +96,16 @@ namespace Babbacombe.SockLib {
 
                 lock (_clients) _clients.Add(client);
 
+                byte[] overrun = null;
                 try {
                     do {
                         RecMessage msg;
                         RecMessageHeader header;
-                        using (var recStream = new DelimitedStream(client.Client.GetStream())) {
+                        using (var recStream = new DelimitedStream(client.Client.GetStream(), overrun)) {
                             header = new RecMessageHeader(recStream);
                             if (header.IsEmpty) break;
                             msg = RecMessage.Create(header, recStream);
+                            overrun = recStream.GetOverrun();
                         }
                         SendMessage reply = null;
                         if (Handlers.ContainsKey(msg.Command)) {

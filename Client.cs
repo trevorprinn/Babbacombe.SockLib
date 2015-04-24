@@ -159,13 +159,14 @@ namespace Babbacombe.SockLib {
         }
 
         private void listen() {
+            byte[] overrun = null;
             try {
                 do {
                     if (_client == null) break;
                     if (_client.Available <= 0) {
                         Thread.Sleep(20);
                     } else {
-                        var clientStream = new DelimitedStream(_netStream);
+                        var clientStream = new DelimitedStream(_netStream, overrun);
                         var header = new RecMessageHeader(clientStream);
                         if (header == null) {
                             // This shouldn't happen.
@@ -179,6 +180,7 @@ namespace Babbacombe.SockLib {
                         } else {
                             OnMessageReceived(RecMessage.Create(header, clientStream));
                         }
+                        overrun = clientStream.GetOverrun();
                     }
                 } while (!_stopListening);
             } catch (IOException ex) {

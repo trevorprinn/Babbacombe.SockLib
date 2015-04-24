@@ -43,8 +43,9 @@ namespace Babbacombe.SockLib {
         private int _position;
         private int _bufferCount;
 
-        public DelimitedStream(Stream stream) {
+        public DelimitedStream(Stream stream, byte[] overrun = null) {
             _stream = stream;
+            if (overrun != null) PushbackOverrun(overrun);
             Delimiter = readLine(true);
         }
 
