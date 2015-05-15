@@ -5,6 +5,8 @@ VisualStudioVersion = 12.0.31101.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SockLib", "SockLib.csproj", "{341FA25A-3FAC-4ED1-9E7F-F895C2030335}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SockLibUnitTests", "SockLibUnitTests\SockLibUnitTests.csproj", "{5D9D8760-10AC-4CC7-88B5-3A7B2F7E60E1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{341FA25A-3FAC-4ED1-9E7F-F895C2030335}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{341FA25A-3FAC-4ED1-9E7F-F895C2030335}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{341FA25A-3FAC-4ED1-9E7F-F895C2030335}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5D9D8760-10AC-4CC7-88B5-3A7B2F7E60E1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5D9D8760-10AC-4CC7-88B5-3A7B2F7E60E1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5D9D8760-10AC-4CC7-88B5-3A7B2F7E60E1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5D9D8760-10AC-4CC7-88B5-3A7B2F7E60E1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

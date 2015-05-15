@@ -31,7 +31,11 @@ using System.Xml.Linq;
 namespace Babbacombe.SockLib {
     public abstract class RecMessage {
         public RecMessageHeader Header { get; private set; }
+#if TEST
+        public Stream Stream { get; private set; }
+#else
         protected Stream Stream { get; private set; }
+#endif
 
         private RecMessage() { }
 
@@ -178,6 +182,6 @@ namespace Babbacombe.SockLib {
 
     public class UnknownMessageTypeException : ApplicationException {
         public UnknownMessageTypeException(char type)
-            : base(string.Format("Unknown Message Type '{0}' received")) { }
+            : base(string.Format("Unknown Message Type '{0}' received", type)) { }
     }
 }
