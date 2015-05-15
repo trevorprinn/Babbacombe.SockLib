@@ -59,6 +59,7 @@ namespace Babbacombe.SockLib {
         }
 
         private MessageTypes getMessageType(char t) {
+            if (!"TSUXBFM".Contains(t)) throw new UnknownMessageTypeException(t);
             return ((MessageTypes[])Enum.GetValues(typeof(MessageTypes))).Single(mt => mt.ToString()[0] == t);
         }
     }

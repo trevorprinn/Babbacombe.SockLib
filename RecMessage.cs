@@ -40,7 +40,7 @@ namespace Babbacombe.SockLib {
             Stream = stream;
         }
 
-        public static RecMessage Create(RecMessageHeader header, Stream stream) {
+        internal static RecMessage Create(RecMessageHeader header, Stream stream) {
             switch (header.Type) {
                 case MessageTypes.Text: return new RecTextMessage(header, stream);
                 case MessageTypes.Status: return new RecStatusMessage(header, stream);
@@ -170,5 +170,10 @@ namespace Babbacombe.SockLib {
                 _manager = value;
             }
         }
+    }
+
+    public class UnknownMessageTypeException : ApplicationException {
+        public UnknownMessageTypeException(char type)
+            : base(string.Format("Unknown Message Type '{0}' received")) { }
     }
 }
