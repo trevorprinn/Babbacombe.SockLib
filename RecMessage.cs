@@ -40,7 +40,11 @@ namespace Babbacombe.SockLib {
             Stream = stream;
         }
 
+#if TEST
+        public static RecMessage Create(RecMessageHeader header, Stream stream) {
+#else
         internal static RecMessage Create(RecMessageHeader header, Stream stream) {
+#endif
             switch (header.Type) {
                 case MessageTypes.Text: return new RecTextMessage(header, stream);
                 case MessageTypes.Status: return new RecStatusMessage(header, stream);

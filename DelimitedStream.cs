@@ -28,8 +28,12 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace Babbacombe.SockLib {
+#if TEST
+    public class DelimitedStream : Stream {
+#else
     internal class DelimitedStream : Stream {
-        private Stream _stream;
+#endif
+    private Stream _stream;
         public string Delimiter { get; private set; }
         // Flag that the end of the input stream has been reached. There may still be buffered data to be
         // read from this object.

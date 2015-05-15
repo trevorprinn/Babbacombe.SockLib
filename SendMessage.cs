@@ -38,7 +38,11 @@ namespace Babbacombe.SockLib {
 
         protected abstract void SendData(Stream stream);
 
+#if TEST
+        public void Send(Stream stream) {
+#else
         internal void Send(Stream stream) {
+#endif
             var delim = Encoding.UTF8.GetBytes(new string('-', 29) + Guid.NewGuid().ToString());
             stream.Write(delim, 0, delim.Length);
             stream.WriteByte((byte)'\n');
