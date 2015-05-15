@@ -165,11 +165,11 @@ namespace Babbacombe.SockLib {
         public void Broadcast(SendMessage message, IEnumerable<ServerClient> clients = null) {
             lock (_clients) {
                 if (clients == null) clients = _clients;
-                foreach (var c in clients) {
+                Parallel.ForEach(clients, c => {
                     if (_clients.Contains(c)) {
                         c.SendMessage(message);
                     }
-                }
+                });
             }
         }
     }
