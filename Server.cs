@@ -158,6 +158,7 @@ namespace Babbacombe.SockLib {
                     do {
                         RecMessage msg;
                         RecMessageHeader header;
+                        SendMessage reply = null;
                         using (var recStream = new DelimitedStream(client.Client.GetStream(), overrun)) {
                             // Wait until a message is received.
                             header = new RecMessageHeader(recStream);
@@ -166,20 +167,19 @@ namespace Babbacombe.SockLib {
                             // If there is more than one message waiting, the DelimitedStream
                             // may have buffered past the end of the first message. This overrun
                             // needs to be put back onto the beginning of the next stream.
+                            if (Handlers.ContainsKey(msg.Command)) {
+                                // There's a handler for this command, so call it.
+                                var handler = Handlers[msg.Command];
+                                reply = handler.Invoke(client, msg);
+                            } else {
+                                if (msg is RecFilenamesMessage) {
+                                    reply = OnFilenamesMessageReceived(client, (RecFilenamesMessage)msg);
+                                }
+                                if (reply == null) {
+                                    reply = OnMessageReceived(client, msg);
+                                }
+                            }
                             overrun = recStream.GetOverrun();
-                        }
-                        SendMessage reply = null;
-                        if (Handlers.ContainsKey(msg.Command)) {
-                            // There's a handler for this command, so call it.
-                            var handler = Handlers[msg.Command];
-                            reply = handler.Invoke(client, msg);
-                        } else {
-                            if (msg is RecFilenamesMessage) {
-                                reply = OnFilenamesMessageReceived(client, (RecFilenamesMessage)msg);
-                            }
-                            if (reply == null) {
-                                reply = OnMessageReceived(client, msg);
-                            }
                         }
                         if (reply != null) {
                             // Send a reply if one has been specified.
