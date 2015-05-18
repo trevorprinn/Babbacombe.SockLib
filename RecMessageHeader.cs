@@ -42,7 +42,7 @@ namespace Babbacombe.SockLib {
 #else
         internal RecMessageHeader(Stream stream) {
 #endif
-        var line1 = readLine(stream);
+            var line1 = readLine(stream);
             IsEmpty = string.IsNullOrEmpty(line1);
             if (IsEmpty) return;
             Type = getMessageType(line1[0]);

@@ -11,6 +11,9 @@ namespace SockLibUnitTests {
     [TestClass]
     public class ClientServerTests {
 
+        /// <summary>
+        /// Test a single transaction works with a single client.
+        /// </summary>
         [TestMethod]
         public void OneTextTransaction() {
             using (Server server = new Server(9000)) 
@@ -43,6 +46,9 @@ namespace SockLibUnitTests {
             return new SendTextMessage(r.Command, ((RecTextMessage)r).Text);
         }
 
+        /// <summary>
+        /// Tests multiple clients sending multiple transactions get back the correct replies.
+        /// </summary>
         [TestMethod]
         public void MultipleClientTextTransactions() {
             const int clientCount = 25;
@@ -66,6 +72,21 @@ namespace SockLibUnitTests {
                 });
                 clients.ForEach(c => c.Dispose());
             }
+        }
+
+        [TestMethod]
+        public void CloseServer() {
+            Client client;
+            using (Server server = new Server(9000)) {
+                server.Handlers.Add("Test", echoText);
+                client = new Client("localhost", 9000);
+                client.Open();
+
+                client.Transaction(new SendTextMessage("Test", "abc"));
+            }
+            try {
+                client.Transaction(new SendTextMessage("Test", "xyz"));
+            } catch (ServerClosedException) { }
         }
     }
 }

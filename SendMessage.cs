@@ -24,6 +24,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
@@ -43,30 +44,38 @@ namespace Babbacombe.SockLib {
 #else
         internal void Send(Stream stream) {
 #endif
-            var delim = Encoding.UTF8.GetBytes(new string('-', 29) + Guid.NewGuid().ToString());
-            stream.Write(delim, 0, delim.Length);
-            stream.WriteByte((byte)'\n');
+            bool inSendData = false;
+            try {
+                var delim = Encoding.UTF8.GetBytes(new string('-', 29) + Guid.NewGuid().ToString());
+                stream.Write(delim, 0, delim.Length);
+                stream.WriteByte((byte)'\n');
 
-            var type = (byte)Type.ToString()[0];
-            stream.WriteByte(type);
+                var type = (byte)Type.ToString()[0];
+                stream.WriteByte(type);
 
-            if (!string.IsNullOrWhiteSpace(Id)) {
-                var buf = Encoding.UTF8.GetBytes(Id);
-                stream.Write(buf, 0, buf.Length);
+                if (!string.IsNullOrWhiteSpace(Id)) {
+                    var buf = Encoding.UTF8.GetBytes(Id);
+                    stream.Write(buf, 0, buf.Length);
+                }
+                stream.WriteByte((byte)'\n');
+
+                if (!string.IsNullOrWhiteSpace(Command)) {
+                    var buf = Encoding.UTF8.GetBytes(Command);
+                    stream.Write(buf, 0, buf.Length);
+                }
+                stream.WriteByte((byte)'\n');
+
+                inSendData = true;
+                SendData(stream);
+                inSendData = false;
+                stream.WriteByte((byte)'\n');
+                stream.Write(delim, 0, delim.Length);
+                stream.WriteByte((byte)'\n');
+                stream.Flush();
+            } catch (IOException) {
+                if (!inSendData) throw new SocketClosedException();
+                throw;
             }
-            stream.WriteByte((byte)'\n');
-
-            if (!string.IsNullOrWhiteSpace(Command)) {
-                var buf = Encoding.UTF8.GetBytes(Command);
-                stream.Write(buf, 0, buf.Length);
-            }
-            stream.WriteByte((byte)'\n');
-
-            SendData(stream);
-            stream.WriteByte((byte)'\n');
-            stream.Write(delim, 0, delim.Length);
-            stream.WriteByte((byte)'\n');
-            stream.Flush();
         }
     }
 
@@ -92,7 +101,11 @@ namespace Babbacombe.SockLib {
         protected override void SendData(Stream stream) {
             var buf = GetData();
             if (buf == null) return;
-            stream.Write(buf, 0, buf.Length);
+            try {
+                stream.Write(buf, 0, buf.Length);
+            } catch (IOException) {
+                throw new SocketClosedException();
+            }
         }
     }
 
@@ -146,7 +159,7 @@ namespace Babbacombe.SockLib {
 
         public SendXmlMessage(string command, XDocument document)
             : base(command, document.ToString()) {
-                _document = document;
+            _document = document;
         }
 
         public XDocument Document {
@@ -179,12 +192,16 @@ namespace Babbacombe.SockLib {
         }
 
         protected override void SendData(Stream stream) {
-            if (Data != null) {
-                using (var mem = new MemoryStream(Data)) {
-                    mem.CopyTo(stream);
+            try {
+                if (Data != null) {
+                    using (var mem = new MemoryStream(Data)) {
+                        mem.CopyTo(stream);
+                    }
+                } else if (Stream != null) {
+                    Stream.CopyTo(stream);
                 }
-            } else if (Stream != null) {
-                Stream.CopyTo(stream);
+            } catch (IOException) {
+                throw new SocketClosedException();
             }
         }
     }
@@ -300,7 +317,8 @@ namespace Babbacombe.SockLib {
         public class StringItem : BaseItem {
             public string Data { get; set; }
 
-            public StringItem(string name, string data) : base(name) {
+            public StringItem(string name, string data)
+                : base(name) {
                 Data = data;
                 Type = "String";
             }
@@ -319,8 +337,8 @@ namespace Babbacombe.SockLib {
 
             public BinaryItem(string name, byte[] data = null)
                 : base(name) {
-                    Data = data;
-                    Type = "Binary";
+                Data = data;
+                Type = "Binary";
             }
 
             public override bool DataIsStream {
@@ -328,7 +346,11 @@ namespace Babbacombe.SockLib {
             }
 
             protected internal override void SendData(Stream s) {
-                if (Data != null) s.Write(Data, 0, Data.Length);
+                try {
+                    if (Data != null) s.Write(Data, 0, Data.Length);
+                } catch (IOException) {
+                    throw new SocketClosedException();
+                }
             }
         }
 
@@ -336,7 +358,8 @@ namespace Babbacombe.SockLib {
             public FileItem(string filename)
                 : this(Path.GetFileName(filename), filename) { }
 
-            public FileItem(string name, string filename) : base(name) {
+            public FileItem(string name, string filename)
+                : base(name) {
                 this["Filename"] = filename;
                 Type = "File";
             }
@@ -368,9 +391,13 @@ namespace Babbacombe.SockLib {
                         datastream = File.OpenRead(fileItem.Filename);
                         disposeStream = true;
                     }
-                    if (datastream != null) {
-                        datastream.CopyTo(stream);
-                        if (disposeStream) datastream.Dispose();
+                    try {
+                        if (datastream != null) {
+                            datastream.CopyTo(stream);
+                            if (disposeStream) datastream.Dispose();
+                        }
+                    } catch (IOException) {
+                        throw new SocketClosedException();
                     }
                 } else {
                     item.SendData(stream);
@@ -386,7 +413,13 @@ namespace Babbacombe.SockLib {
             if (addEol) data = data + "\r\n";
             if (data == "") return;
             var buf = Encoding.UTF8.GetBytes(data);
-            s.Write(buf, 0, buf.Length);
+            try {
+                s.Write(buf, 0, buf.Length);
+            } catch (IOException) {
+                throw new SocketClosedException();
+            }
         }
     }
+
+    public class SocketClosedException : ApplicationException { }
 }

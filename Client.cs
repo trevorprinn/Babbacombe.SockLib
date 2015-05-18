@@ -112,13 +112,17 @@ namespace Babbacombe.SockLib {
             if (_mode != Modes.Transaction) throw new ClientModeException(true);
             if (!IsOpen) throw new NotOpenException();
             lock (this) {
-                message.Send(_netStream);
-                var recStream = new DelimitedStream(_netStream);
-                var header = new RecMessageHeader(recStream);
-                if (header.IsEmpty) return null;
-                var reply = RecMessage.Create(header, recStream);
-                if (ExceptionOnStatus && reply is RecStatusMessage) throw new StatusException((RecStatusMessage)reply);
-                return reply;
+                try {
+                    message.Send(_netStream);
+                    var recStream = new DelimitedStream(_netStream);
+                    var header = new RecMessageHeader(recStream);
+                    if (header.IsEmpty) return null;
+                    var reply = RecMessage.Create(header, recStream);
+                    if (ExceptionOnStatus && reply is RecStatusMessage) throw new StatusException((RecStatusMessage)reply);
+                    return reply;
+                } catch (SocketClosedException) {
+                    throw new ServerClosedException();
+                }
             }
         }
 
@@ -183,11 +187,7 @@ namespace Babbacombe.SockLib {
                         overrun = clientStream.GetOverrun();
                     }
                 } while (!_stopListening);
-            } catch (IOException ex) {
-                LastException = ex;
-                Close();
-                OnServerClosed();
-            } catch (SocketException ex) {
+            } catch (SocketClosedException ex) {
                 LastException = ex;
                 Close();
                 OnServerClosed();
@@ -248,4 +248,8 @@ namespace Babbacombe.SockLib {
     }
 
     public delegate void ClientHandler(Client client, RecMessage message);
+
+    public class ServerClosedException : ApplicationException {
+        public ServerClosedException() { }
+    }
 }
