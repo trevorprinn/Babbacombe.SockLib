@@ -74,6 +74,10 @@ namespace SockLibUnitTests {
             }
         }
 
+        /// <summary>
+        /// Tests that a ServerClosedException occurs at the client end when the server is closed and
+        /// the client attempts a transaction.
+        /// </summary>
         [TestMethod]
         public void CloseServer() {
             Client client;
@@ -87,6 +91,47 @@ namespace SockLibUnitTests {
             try {
                 client.Transaction(new SendTextMessage("Test", "xyz"));
             } catch (ServerClosedException) { }
+            client.Dispose();
+        }
+
+        /// <summary>
+        /// Tests a server can send a delayed response to a message from a client.
+        /// </summary>
+        [TestMethod]
+        public void SimpleListen() {
+            using (Server server = new Server(9000))
+            using (Client client = new Client("localhost", 9000, Client.Modes.Listening)) {
+                server.Handlers.Add("Test", echoTextDelayed);
+                client.Open();
+                int msgCount = 0;
+
+                client.MessageReceived += (s, e) => {
+                    msgCount++;
+                };
+
+                client.SendMessage(new SendTextMessage("Test"));
+                Thread.Sleep(4000);
+                Assert.AreEqual(1, msgCount);
+            }
+        }
+
+        [TestMethod]
+        public void CloseClient() {
+            using (Server server = new Server(9000)) {
+                server.Handlers.Add("Test", echoTextDelayed);
+
+                using (Client client = new Client("localhost", 9000, Client.Modes.Listening)) {
+                    client.Open();
+                    client.SendMessage(new SendTextMessage("Test"));
+                }
+                Assert.AreEqual(0, server.Clients.Count());
+                Thread.Sleep(6000);
+            }
+        }
+
+        private SendMessage echoTextDelayed(ServerClient c, RecMessage r) {
+            Thread.Sleep(3000);
+            return new SendTextMessage(r.Command, ((RecTextMessage)r).Text);
         }
     }
 }
