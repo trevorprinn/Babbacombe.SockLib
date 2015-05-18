@@ -56,7 +56,7 @@ namespace Babbacombe.SockLib {
         public event EventHandler<MessageReceivedEventArgs> MessageReceived;
         public event EventHandler ServerClosed;
 
-        public Dictionary<string, Action<Client, RecMessage>> Handlers = new Dictionary<string, Action<Client, RecMessage>>();
+        public Dictionary<string, ClientHandler> Handlers = new Dictionary<string, ClientHandler>();
 
         public Exception LastException { get; private set; }
 
@@ -247,4 +247,5 @@ namespace Babbacombe.SockLib {
         public NotOpenException() : base("The SockLib client is not open") { }
     }
 
+    public delegate void ClientHandler(Client client, RecMessage message);
 }

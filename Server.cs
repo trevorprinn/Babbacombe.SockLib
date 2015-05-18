@@ -97,7 +97,7 @@ namespace Babbacombe.SockLib {
         /// <summary>
         /// Gets and sets the handlers declared for messages received from clients.
         /// </summary>
-        public Dictionary<string, Func<ServerClient, RecMessage, SendMessage>> Handlers = new Dictionary<string, Func<ServerClient, RecMessage, SendMessage>>();
+        public Dictionary<string, ServerHandler> Handlers = new Dictionary<string, ServerHandler>();
 
         /// <summary>
         /// Creates a server listening on localhost.
@@ -271,4 +271,6 @@ namespace Babbacombe.SockLib {
             }
         }
     }
+
+    public delegate SendMessage ServerHandler(ServerClient client, RecMessage message);
 }
