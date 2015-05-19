@@ -131,6 +131,7 @@ namespace Babbacombe.SockLib {
         }
 
         private int readByte() {
+            if (_outerPushbackBuffer.Any()) return _outerPushbackBuffer.Dequeue();
             if (_pushBackBuffer.Any()) return _pushBackBuffer.Dequeue();
             if (_endOfStream) return -1;
             if (_position >= _bufferCount) {

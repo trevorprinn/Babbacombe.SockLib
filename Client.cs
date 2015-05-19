@@ -45,6 +45,8 @@ namespace Babbacombe.SockLib {
         public string Host { get; private set; }
         public int Port { get; private set; }
 
+        public bool ListenBusy { get; private set; }
+
         private Func<SendMessage, RecMessage> _trans;
 
         public class MessageReceivedEventArgs : EventArgs {
@@ -159,6 +161,7 @@ namespace Babbacombe.SockLib {
             _listeningThread.Name = "SockLib client listener";
             _listeningThread.IsBackground = true;
             _stopListening = false;
+            ListenBusy = true;
             _listeningThread.Start();
         }
 
@@ -167,24 +170,27 @@ namespace Babbacombe.SockLib {
             try {
                 do {
                     if (_client == null) break;
-                    if (_client.Available <= 0) {
+                    if ((overrun == null || overrun.Length == 0) && _client.Available <= 0) {
+                        ListenBusy = false;
                         Thread.Sleep(20);
                     } else {
-                        var clientStream = new DelimitedStream(_netStream, overrun);
-                        var header = new RecMessageHeader(clientStream);
-                        if (header == null) {
-                            // This shouldn't happen.
-                            Close();
-                            OnServerClosed();
-                            break;
+                        ListenBusy = true;
+                        using (var clientStream = new DelimitedStream(_netStream, overrun)) {
+                            var header = new RecMessageHeader(clientStream);
+                            if (header == null) {
+                                // This shouldn't happen.
+                                Close();
+                                OnServerClosed();
+                                break;
+                            }
+                            var msg = RecMessage.Create(header, clientStream);
+                            if (Handlers.ContainsKey(header.Command)) {
+                                CallHandler(msg);
+                            } else {
+                                OnMessageReceived(RecMessage.Create(header, clientStream));
+                            }
+                            overrun = clientStream.GetOverrun();
                         }
-                        var msg = RecMessage.Create(header, clientStream);
-                        if (Handlers.ContainsKey(header.Command)) {
-                            CallHandler(msg);
-                        } else {
-                            OnMessageReceived(RecMessage.Create(header, clientStream));
-                        }
-                        overrun = clientStream.GetOverrun();
                     }
                 } while (!_stopListening);
             } catch (SocketClosedException ex) {
@@ -192,7 +198,9 @@ namespace Babbacombe.SockLib {
                 Close();
                 OnServerClosed();
             } finally {
+                ListenBusy = false;
                 _listeningThread = null;
+                _mode = Modes.Transaction;
             }
         }
 
@@ -202,7 +210,7 @@ namespace Babbacombe.SockLib {
         }
 
         protected virtual void Dispose(bool disposing) {
-            if (_client != null) Close();
+            Close();
         }
 
         public void CallHandler(RecMessage recMessage) {

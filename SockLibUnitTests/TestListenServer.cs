@@ -29,10 +29,10 @@ namespace SockLibUnitTests {
             }
         }
 
-        public TestListenServer()
+        public TestListenServer(int msgCnt)
             : base(9000) {
             var rnd = new Random();
-            for (int i = 0; i < 50; i++) _msgs.Add(new Msg(i + 1, rnd.Next(250)));
+            for (int i = 0; i < msgCnt; i++) _msgs.Add(new Msg(i + 1, rnd.Next(1000)));
             _msgs.Shuffle();
 
             Handlers.Add("Test", handleMsg);
@@ -56,12 +56,11 @@ namespace SockLibUnitTests {
         }
 
         public Task Exercise() {
-            return Task.Factory.StartNew(() => {
+            return Task.Run(async () => {
                 foreach (var msg in _msgs) {
-                    Thread.Sleep(msg.Delay);
+                    await Task.Delay(msg.Delay);
                     Broadcast(new SendTextMessage("Test", msg.MsgNo.ToString()));
                 }
-                Thread.Sleep(500);
             });
         }
 

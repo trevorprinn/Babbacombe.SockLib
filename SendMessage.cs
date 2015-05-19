@@ -72,8 +72,8 @@ namespace Babbacombe.SockLib {
                 stream.Write(delim, 0, delim.Length);
                 stream.WriteByte((byte)'\n');
                 stream.Flush();
-            } catch (IOException) {
-                if (!inSendData) throw new SocketClosedException();
+            } catch (IOException ex) {
+                if (!inSendData) throw new SocketClosedException(ex);
                 throw;
             }
         }
@@ -421,5 +421,8 @@ namespace Babbacombe.SockLib {
         }
     }
 
-    public class SocketClosedException : ApplicationException { }
+    public class SocketClosedException : ApplicationException {
+        public SocketClosedException() { }
+        public SocketClosedException(Exception inner) : base("Socket Closed", inner) { }
+    }
 }

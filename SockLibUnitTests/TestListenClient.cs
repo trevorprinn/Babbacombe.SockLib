@@ -10,7 +10,7 @@ using Babbacombe.SockLib;
 namespace SockLibUnitTests {
     class TestListenClient : Client {
         public int Ident { get; private set; }
-                private List<Msg> _msgs = new List<Msg>();
+        private List<Msg> _msgs = new List<Msg>();
         private List<int> _recMsgs = new List<int>();
 
         private class Msg {
@@ -23,12 +23,12 @@ namespace SockLibUnitTests {
             }
         }
 
-        public TestListenClient(int ident)
+        public TestListenClient(int ident, int msgCount)
             : base("localhost", 9000, Modes.Listening) {
             Ident = ident;
-            Open();
+            if (!Open()) throw new ApplicationException("Client socket didn't open");
             var rnd = new Random();
-            for (int i = 0; i < 50; i++) _msgs.Add(new Msg(i + 1, rnd.Next(250)));
+            for (int i = 0; i < msgCount; i++) _msgs.Add(new Msg(i + 1, rnd.Next(1000)));
             _msgs.Shuffle();
 
             Handlers.Add("Test", handleMsg);
@@ -43,12 +43,12 @@ namespace SockLibUnitTests {
         public Task Exercise() {
             SendMessage(new SendTextMessage("Ident", Ident.ToString()));
 
-            return Task.Factory.StartNew(() => {
+            return Task.Run(async () => {
                 foreach (var msg in _msgs) {
-                    Thread.Sleep(msg.Delay);
+                    await Task.Delay(msg.Delay);
                     SendMessage(new SendTextMessage("Test", msg.MsgNo.ToString()));
                 }
-                Thread.Sleep(500);
+                while (ListenBusy) await Task.Delay(500);
             });
         }
 

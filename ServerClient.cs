@@ -31,7 +31,7 @@ using System.Threading.Tasks;
 
 namespace Babbacombe.SockLib {
     public class ServerClient : IDisposable {
-        protected internal Server Server { get; internal set; }
+        public Server Server { get; internal set; }
         protected internal TcpClient Client { get; internal set; }
 
         public event EventHandler Created;

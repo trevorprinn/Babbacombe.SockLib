@@ -143,29 +143,39 @@ namespace SockLibUnitTests {
         /// correct order.
         /// </summary>
         [TestMethod]
-        public void Listening() {
-            doListening();
-        }
-
-        public async void doListening() {
+        public async Task Listening() {
             const int clientCount = 20;
+            const int serverMsgCount = 50;
+            const int clientMsgCount = 50;
+
             var clients = new List<TestListenClient>();
-            using (var server = new TestListenServer()) {
+            using (var server = new TestListenServer(serverMsgCount)) {
                 for (int i = 0; i < clientCount; i++) {
-                    clients.Add(new TestListenClient(i + 1));
+                    clients.Add(new TestListenClient(i + 1, clientMsgCount));
                 }
 
-                List<Task> tasks = new List<Task>();
-                tasks.Add(server.Exercise());
-                
-                foreach (var c in clients) tasks.Add(c.Exercise());
+                // Wait for all the clients to get connected up, so that
+                // they all get broadcast to.
+                while (server.Clients.Count() < clientCount) await Task.Delay(1000);
+                await Task.Delay(1000);
 
-                foreach (var t in tasks) await t;
-                Thread.Sleep(1000);
+                List<Task> tasks = new List<Task>();
+                
+                // Send loads of messages from the clients to the server.
+                foreach (var c in clients) tasks.Add(c.Exercise());
+                // Broadcast loads of messages from the server to the clients.
+                tasks.Add(server.Exercise());
+
+                // Wait until all the messages have been sent.
+                await Task.WhenAll(tasks);
 
                 foreach (var c in clients) {
-                    Assert.AreEqual(50, server.GetRecMessages(c.Ident).Count(), "Server received messages");
-                    Assert.AreEqual(50, c.GetSentMessages().Count(), "Client received messages");
+                    // Check the client didn't drop out of listening mode due to an exception.
+                    Assert.IsTrue(c.Mode == Client.Modes.Listening);
+                    // Check the correct messages were received at both ends in the correct order.
+                    Assert.AreEqual(clientMsgCount, server.GetRecMessages(c.Ident).Count(), "Server received messages");
+                    Assert.AreEqual(serverMsgCount, c.GetRecMessages().Count(), "Client {0} received messages", c.Ident);
+                    // Check the correct number of messages were received.
                     Assert.IsFalse(server.GetRecMessages(c.Ident).Zip(c.GetSentMessages(), (sm, rm) => sm == rm).Any(r => !r), "Server received messages");
                     Assert.IsFalse(c.GetRecMessages().Zip(server.GetSentMessages(), (sm, rm) => sm == rm).Any(r => !r), "Client received messages");
                 }
