@@ -173,10 +173,10 @@ namespace SockLibUnitTests {
                 foreach (var c in clients) {
                     // Check the client didn't drop out of listening mode due to an exception.
                     Assert.IsTrue(c.Mode == Client.Modes.Listening);
-                    // Check the correct messages were received at both ends in the correct order.
+                    // Check the correct number of messages were received.
                     Assert.AreEqual(clientMsgCount, server.GetRecMessages(c.Ident).Count(), "Server received messages");
                     Assert.AreEqual(serverMsgCount, c.GetRecMessages().Count(), "Client {0} received messages", c.Ident);
-                    // Check the correct number of messages were received.
+                    // Check the correct messages were received at both ends in the correct order.
                     Assert.IsFalse(server.GetRecMessages(c.Ident).Zip(c.GetSentMessages(), (sm, rm) => sm == rm).Any(r => !r), "Server received messages");
                     Assert.IsFalse(c.GetRecMessages().Zip(server.GetSentMessages(), (sm, rm) => sm == rm).Any(r => !r), "Client received messages");
                 }

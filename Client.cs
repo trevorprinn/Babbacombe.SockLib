@@ -32,38 +32,93 @@ using System.Threading.Tasks;
 
 namespace Babbacombe.SockLib {
 
+    /// <summary>
+    /// Manages the client end of a client/server connection.
+    /// </summary>
     public class Client : IDisposable {
 
-        public enum Modes { Transaction, Listening }
+        /// <summary>
+        /// The modes a client can be in.
+        /// </summary>
+        public enum Modes {
+            /// <summary>
+            /// In Transaction mode, all communication is started by the client calling the Transaction method,
+            /// and the Server should send a reply.
+            /// </summary>
+            Transaction, 
+            /// <summary>
+            /// In Listening mode, the client and server communicate with one another by sending messages at any time.
+            /// </summary>
+            Listening
+        }
 
         private TcpClient _client;
         private Modes _mode = Modes.Transaction;
         private bool _stopListening;
         private NetworkStream _netStream;
+
+        /// <summary>
+        /// Whether to raise an exception automatically when a Status message is received as the reply in a Transaction.
+        /// Defaults to False.
+        /// </summary>
         public bool ExceptionOnStatus { get; set; }
 
+        /// <summary>
+        /// Gets the host name of the server.
+        /// </summary>
         public string Host { get; private set; }
+        /// <summary>
+        /// Gets the port number of the server.
+        /// </summary>
         public int Port { get; private set; }
 
+        /// <summary>
+        /// True in Listening mode while messages are being processed.
+        /// </summary>
         public bool ListenBusy { get; private set; }
 
         private Func<SendMessage, RecMessage> _trans;
 
+        /// <summary>
+        /// Arguments for the MessageReceived event.
+        /// </summary>
         public class MessageReceivedEventArgs : EventArgs {
+            /// <summary>
+            /// The message that has been received from the server.
+            /// </summary>
             public RecMessage Message { get; private set; }
             public MessageReceivedEventArgs(RecMessage message) {
                 Message = message;
             }
         }
+        /// <summary>
+        /// Raised in Listening mode when no handler has been declared for the message.
+        /// </summary>
         public event EventHandler<MessageReceivedEventArgs> MessageReceived;
+
+        /// <summary>
+        /// Raised in Listening mode if the server shuts down.
+        /// </summary>
         public event EventHandler ServerClosed;
 
+        /// <summary>
+        /// Gets and sets the handlers for messages received from the server (in either mode).
+        /// </summary>
         public Dictionary<string, ClientHandler> Handlers = new Dictionary<string, ClientHandler>();
 
+        /// <summary>
+        /// Gets the last exception that occurred in an Open() call, or when the server shuts down in Listening mode.
+        /// </summary>
         public Exception LastException { get; private set; }
 
         private Thread _listeningThread;
 
+        /// <summary>
+        /// Sets up (but does not open) a connection to the server.
+        /// </summary>
+        /// <param name="host">The name or IP address of the server.</param>
+        /// <param name="port">The port number of the server.</param>
+        /// <param name="mode">The mode to start the connection in. Defaults to Transaction.</param>
         public Client(string host, int port, Modes mode = Modes.Transaction) {
             Host = host;
             Port = port;
@@ -71,6 +126,11 @@ namespace Babbacombe.SockLib {
             _trans = Transaction;
         }
 
+        /// <summary>
+        /// Opens the socket and connects to the server.
+        /// </summary>
+        /// <returns>True if successful. If False, the LastException property contains the exception that occurred.</returns>
+        /// <remarks>If the connection is already open, it is closed and re-opened.</remarks>
         public bool Open() {
             if (IsOpen) Close();
             try {
@@ -84,6 +144,9 @@ namespace Babbacombe.SockLib {
             return true;
         }
 
+        /// <summary>
+        /// Closes the connection to the server.
+        /// </summary>
         public void Close() {
             if (!IsOpen) return;
             if (_listeningThread != null) _stopListening = true;
@@ -93,23 +156,48 @@ namespace Babbacombe.SockLib {
             _client = null;
         }
 
+        /// <summary>
+        /// Raises the OnMessageReceived event.
+        /// </summary>
+        /// <param name="message"></param>
         protected virtual void OnMessageReceived(RecMessage message) {
             if (MessageReceived != null) MessageReceived(this, new MessageReceivedEventArgs(message));
         }
 
+        /// <summary>
+        /// Raises the OnServerClosed event.
+        /// </summary>
         protected virtual void OnServerClosed() {
             if (ServerClosed != null) ServerClosed(this, EventArgs.Empty);
         }
 
+        
+        /// <summary>
+        /// Begins an asynchronous Transaction() call. Can be called only in Transaction mode.
+        /// </summary>
+        /// <param name="message">The message to send to the server.</param>
+        /// <param name="callback">The function to process the reply.</param>
+        /// <param name="data">User data to pass to the callback function.</param>
+        /// <returns></returns>
         public IAsyncResult BeginTransaction(SendMessage message, AsyncCallback callback = null, object data = null) {
             if (_mode != Modes.Transaction) throw new ClientModeException(true);
             return _trans.BeginInvoke(message, callback, data);
         }
 
+        /// <summary>
+        /// Ends an asynchronous Transaction() call.
+        /// </summary>
+        /// <param name="cookie"></param>
+        /// <returns></returns>
         public RecMessage EndTransaction(IAsyncResult cookie) {
             return _trans.EndInvoke(cookie);
         }
 
+        /// <summary>
+        /// Sends a message to the server and waits for the reply. Can be called only in Transaction mode.
+        /// </summary>
+        /// <param name="message">The message to send to the server.</param>
+        /// <returns>The reply from the server.</returns>
         public RecMessage Transaction(SendMessage message) {
             if (_mode != Modes.Transaction) throw new ClientModeException(true);
             if (!IsOpen) throw new NotOpenException();
@@ -128,11 +216,20 @@ namespace Babbacombe.SockLib {
             }
         }
 
+        /// <summary>
+        /// Carries out a Transaction() call asynchronously. Can only be called in Transaction mode.
+        /// </summary>
+        /// <param name="message"></param>
+        /// <returns></returns>
         public async Task<RecMessage> TransactionAsync(SendMessage message) {
             if (!IsOpen) throw new NotOpenException();
             return await Task<RecMessage>.Run(() => Transaction(message));
         }
 
+        /// <summary>
+        /// Sends a message to the server, and does not wait for a reply. Can be called only in Listening mode.
+        /// </summary>
+        /// <param name="message"></param>
         public void SendMessage(SendMessage message) {
             if (_mode != Modes.Listening) throw new ClientModeException(false);
             if (!IsOpen) throw new NotOpenException();
@@ -141,6 +238,9 @@ namespace Babbacombe.SockLib {
             }
         }
 
+        /// <summary>
+        /// Sets or gets the mode, either Transaction or Listening.
+        /// </summary>
         public Modes Mode {
             get { return _mode; }
             set {
@@ -200,10 +300,12 @@ namespace Babbacombe.SockLib {
             } finally {
                 ListenBusy = false;
                 _listeningThread = null;
-                _mode = Modes.Transaction;
             }
         }
 
+        /// <summary>
+        /// Closes the connection to the server.
+        /// </summary>
         public void Dispose() {
             Dispose(true);
             GC.SuppressFinalize(this);
@@ -213,6 +315,10 @@ namespace Babbacombe.SockLib {
             Close();
         }
 
+        /// <summary>
+        /// Calls the handler set up for the message's command, if there is one.
+        /// </summary>
+        /// <param name="recMessage"></param>
         public void CallHandler(RecMessage recMessage) {
             if (Handlers.ContainsKey(recMessage.Command)) {
                 var handler = Handlers[recMessage.Command];
@@ -220,6 +326,9 @@ namespace Babbacombe.SockLib {
             }
         }
 
+        /// <summary>
+        /// Gets whether the connection is currently open.
+        /// </summary>
         public bool IsOpen {
             get { return _client != null; }
         }
