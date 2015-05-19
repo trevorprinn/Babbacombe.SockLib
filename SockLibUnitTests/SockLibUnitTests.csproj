@@ -55,6 +55,7 @@
     <Compile Include="Extensions.cs" />
     <Compile Include="MessageTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="RandomFile.cs" />
     <Compile Include="TestListenClient.cs" />
     <Compile Include="TestListenServer.cs" />
   </ItemGroup>

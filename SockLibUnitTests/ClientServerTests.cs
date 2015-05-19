@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -182,6 +183,38 @@ namespace SockLibUnitTests {
 
                 foreach (var c in clients) c.Dispose();
             }
+        }
+
+        [TestMethod]
+        public void TransferFiles() {
+            var sendFiles = new List<RandomFile>(Enumerable.Range(1, 10).Select(i => new RandomFile(5.Megs())));
+            var recFiles = new List<string>();
+
+            using (Server server = new Server(9000)) 
+            using (Client client = new Client("localhost", 9000)) {
+                client.Open();
+
+                server.Handlers.Add("GetNames", (c, m) => {
+                    return new SendFilenamesMessage("Files", sendFiles.Select(f => f.Name));
+                });
+
+                var namesReply = (RecFilenamesMessage)client.Transaction(new SendTextMessage("GetNames"));
+                var mpReply = (RecMultipartMessage)client.Transaction(new SendFilenamesMessage("GetFiles", namesReply.Filenames));
+                mpReply.Manager.FileUploaded += (s, e) => {
+                    string fname = Path.GetTempFileName();
+                    recFiles.Add(fname);
+                    using (var fs = new FileStream(fname, FileMode.Create, FileAccess.Write)) {
+                        e.Contents.CopyTo(fs);
+                    } 
+                };
+                mpReply.Manager.Process();
+            }
+
+            Assert.AreEqual(sendFiles.Count, recFiles.Count);
+            Assert.IsTrue(sendFiles.Zip(recFiles, (sf, rf) => sf.IsEqual(rf)).All(r => r));
+
+            foreach (var f in sendFiles.ToArray()) f.Dispose();
+            foreach (var f in recFiles) File.Delete(f);
         }
     }
 }

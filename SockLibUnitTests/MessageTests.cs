@@ -69,7 +69,7 @@ namespace SockLibUnitTests {
 
         [TestMethod]
         public void BinaryMessageStream() {
-            using (var f = new RandomFile(10 * 1024 * 1024)) 
+            using (var f = new RandomFile(10.Megs())) 
             using (var fs = f.GetStream()) {
                 var msg = new SendBinaryMessage("TestBinStream", fs);
                 var reply = (RecBinaryMessage)transferMessage(msg);
@@ -77,7 +77,7 @@ namespace SockLibUnitTests {
                 reply.Stream.Dispose();
             }
 
-            using (var f = new RandomFile(10 * 1024 * 1024, "\r\n"))
+            using (var f = new RandomFile(10.Megs(), "\r\n"))
             using (var fs = f.GetStream()) {
                 var msg = new SendBinaryMessage("TestBinStream", fs);
                 var reply = (RecBinaryMessage)transferMessage(msg);
@@ -98,9 +98,9 @@ namespace SockLibUnitTests {
         [TestMethod]
         public void MultipartMessage() {
             var r = new Random();
-            var files = Enumerable.Range(1, 10).Select(i => new RandomFile(r.Next(50 * 1024 * 1024), i % 2 == 0 ? "\r\n" : null)).ToArray();
+            var files = Enumerable.Range(1, 10).Select(i => new RandomFile(r.Next(50.Megs()), i % 2 == 0 ? "\r\n" : null)).ToArray();
             var bins = Enumerable.Range(1, 5).Select(i => {
-                var buf = new byte[r.Next(10 * 1024 * 1024)];
+                var buf = new byte[r.Next(10.Megs())];
                 r.NextBytes(buf);
                 return new { Name = Path.GetRandomFileName(), Data = buf };
             }).ToArray();
@@ -114,7 +114,7 @@ namespace SockLibUnitTests {
             man.BinaryUploaded += (s, e) => {
                 var bin = bins.Single(b => b.Name == e.Info.Name);
                 var pos = 0;
-                int buflen = 1024 * 1024;
+                int buflen = 1.Megs();
                 var buf = new byte[buflen];
                 int rcount;
                 do {
@@ -141,51 +141,6 @@ namespace SockLibUnitTests {
         private static void cleanUp() {
             foreach (var f in _tempFiles) f.Delete();
             _tempFiles.Clear();
-        }
-
-        public class RandomFile : IDisposable {
-            private FileInfo _info;
-
-            public RandomFile(int length, string eof = null) {
-                _info = new FileInfo(Path.GetTempFileName());
-                int bufsize = 16 * 1024;
-                byte[] buf = new byte[bufsize];
-                var r = new Random();
-                int rem = length;
-                using (var s = _info.OpenWrite()) {
-                    while (rem > 0) {
-                        r.NextBytes(buf);
-                        s.Write(buf, 0, Math.Min(bufsize, rem));
-                        rem -= bufsize;
-                    }
-                    if (eof != null) {
-                        var b = Encoding.UTF8.GetBytes(eof);
-                        s.Write(b, 0, b.Length);
-                    }
-                }
-            }
-
-            public Stream GetStream() {
-                return _info.OpenRead();
-            }
-
-            public void Dispose() {
-                _info.Delete();
-            }
-
-            public bool IsEqual(Stream other) {
-                using (var fs = _info.OpenRead()) {
-                    int fb;
-                    do {
-                        fb = fs.ReadByte();
-                        int sb = other.ReadByte();
-                        if (fb != sb) return false;
-                    } while (fb > 0);
-                }
-                return true;
-            }
-
-            public string Name { get { return _info.FullName; } }
         }
     }
 }

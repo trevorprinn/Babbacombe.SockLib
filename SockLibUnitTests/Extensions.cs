@@ -15,5 +15,9 @@ namespace SockLibUnitTests {
                 list[n] = value;
             }
         }
+
+        public static int Megs(this int m) {
+            return m * 1024 * 1024;
+        }
     }
 }
