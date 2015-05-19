@@ -189,7 +189,10 @@ namespace Babbacombe.SockLib {
                         }
                     } while (true);
                 } finally {
-                    lock (_clients) _clients.Remove(client);
+                    lock (_clients) {
+                        client.Dispose();
+                        _clients.Remove(client);
+                    }
                 }
             }
         }
@@ -247,7 +250,7 @@ namespace Babbacombe.SockLib {
                 _stop = true;
                 while (_listenThread != null) Thread.Sleep(10);
             }
-            foreach (var client in _clients.ToArray()) client.Dispose();
+            lock (_clients) foreach (var client in _clients.ToArray()) client.Dispose();
         }
 
         /// <summary>

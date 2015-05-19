@@ -47,7 +47,7 @@ namespace Babbacombe.SockLib {
 
         protected virtual void Dispose(bool disposing) {
             if (Client != null) {
-                Client.GetStream().Dispose();
+                if (Client.Connected) Client.GetStream().Dispose();
                 Client.Close();
                 Client = null;
             }

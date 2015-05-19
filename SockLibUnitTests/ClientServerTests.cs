@@ -122,16 +122,56 @@ namespace SockLibUnitTests {
 
                 using (Client client = new Client("localhost", 9000, Client.Modes.Listening)) {
                     client.Open();
+                    Thread.Sleep(500);
+                    Assert.AreEqual(1, server.Clients.Count());
                     client.SendMessage(new SendTextMessage("Test"));
                 }
+                // Wait because the server won't attempt to send it back for 3 seconds.
+                Thread.Sleep(4000);
                 Assert.AreEqual(0, server.Clients.Count());
-                Thread.Sleep(6000);
             }
         }
 
         private SendMessage echoTextDelayed(ServerClient c, RecMessage r) {
             Thread.Sleep(3000);
             return new SendTextMessage(r.Command, ((RecTextMessage)r).Text);
+        }
+
+        /// <summary>
+        /// Sends shuffled selections of numbers from the server to a set of clients, and from each
+        /// client to the server, and tests that the correct numbers have been received by each in the
+        /// correct order.
+        /// </summary>
+        [TestMethod]
+        public void Listening() {
+            doListening();
+        }
+
+        public async void doListening() {
+            const int clientCount = 20;
+            var clients = new List<TestListenClient>();
+            using (var server = new TestListenServer()) {
+                for (int i = 0; i < clientCount; i++) {
+                    clients.Add(new TestListenClient(i + 1));
+                }
+
+                List<Task> tasks = new List<Task>();
+                tasks.Add(server.Exercise());
+                
+                foreach (var c in clients) tasks.Add(c.Exercise());
+
+                foreach (var t in tasks) await t;
+                Thread.Sleep(1000);
+
+                foreach (var c in clients) {
+                    Assert.AreEqual(50, server.GetRecMessages(c.Ident).Count(), "Server received messages");
+                    Assert.AreEqual(50, c.GetSentMessages().Count(), "Client received messages");
+                    Assert.IsFalse(server.GetRecMessages(c.Ident).Zip(c.GetSentMessages(), (sm, rm) => sm == rm).Any(r => !r), "Server received messages");
+                    Assert.IsFalse(c.GetRecMessages().Zip(server.GetSentMessages(), (sm, rm) => sm == rm).Any(r => !r), "Client received messages");
+                }
+
+                foreach (var c in clients) c.Dispose();
+            }
         }
     }
 }

@@ -97,7 +97,6 @@ namespace SockLibUnitTests {
 
         [TestMethod]
         public void MultipartMessage() {
-            if (System.Windows.Forms.MessageBox.Show("Run Multipart Test? (This can take several minutes)", "Multipart test", System.Windows.Forms.MessageBoxButtons.YesNo, System.Windows.Forms.MessageBoxIcon.Question, System.Windows.Forms.MessageBoxDefaultButton.Button2) == System.Windows.Forms.DialogResult.No) Assert.Fail("Test not run.");
             var r = new Random();
             var files = Enumerable.Range(1, 10).Select(i => new RandomFile(r.Next(50 * 1024 * 1024), i % 2 == 0 ? "\r\n" : null)).ToArray();
             var bins = Enumerable.Range(1, 5).Select(i => {

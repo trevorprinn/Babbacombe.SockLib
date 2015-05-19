@@ -52,8 +52,11 @@
   </Choose>
   <ItemGroup>
     <Compile Include="ClientServerTests.cs" />
+    <Compile Include="Extensions.cs" />
     <Compile Include="MessageTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="TestListenClient.cs" />
+    <Compile Include="TestListenServer.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\SockLib.csproj">
