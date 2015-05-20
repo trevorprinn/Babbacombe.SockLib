@@ -334,6 +334,9 @@ namespace Babbacombe.SockLib {
         }
     }
 
+    /// <summary>
+    /// Thrown if a Transaction is called in Listening mode, or a bare message is sent in Transaction mode.
+    /// </summary>
     public class ClientModeException : ApplicationException {
         private ClientModeException() { }
 
@@ -341,6 +344,9 @@ namespace Babbacombe.SockLib {
             : base(inListeningMode ? "Cannot run a transaction while in Listening mode" : "Cannot send a bare message in Transaction mode") { }
     }
 
+    /// <summary>
+    /// Thrown in Transaction mode if ExceptionOnStatus is true, and a status message is sent as the reply from the server.
+    /// </summary>
     public class StatusException : ApplicationException {
         private StatusException() { }
         public RecStatusMessage StatusMessage { get; private set; }
@@ -360,12 +366,24 @@ namespace Babbacombe.SockLib {
         }
     }
 
+    /// <summary>
+    /// Thrown on an attempt to use a client that is not open.
+    /// </summary>
     public class NotOpenException : ApplicationException {
         public NotOpenException() : base("The SockLib client is not open") { }
     }
 
+    /// <summary>
+    /// The type of handlers for messages sent from the server.
+    /// </summary>
+    /// <param name="client"></param>
+    /// <param name="message"></param>
     public delegate void ClientHandler(Client client, RecMessage message);
 
+    
+    /// <summary>
+    /// Thrown if the server closes while the client is open.
+    /// </summary>
     public class ServerClosedException : ApplicationException {
         public ServerClosedException() { }
     }

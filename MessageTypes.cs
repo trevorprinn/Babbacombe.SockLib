@@ -28,6 +28,9 @@ using System.Threading.Tasks;
 
 namespace Babbacombe.SockLib {
 
+    /// <summary>
+    /// The types of messages that can be sent.
+    /// </summary>
     public enum MessageTypes {
         Text, Status, Unicode, Xml, Binary, Filenames, Multipart
     }

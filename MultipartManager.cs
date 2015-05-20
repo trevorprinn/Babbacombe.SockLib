@@ -31,15 +31,19 @@ using System.Threading.Tasks;
 namespace Babbacombe.SockLib {
 
     /// <summary>
-    /// Manages posted submission of a form with enc-type="multipart/form-data" (commonly
-    /// used for file uploads).
-    /// For each uploaded file a FileUploaded event is triggered that
+    /// Manages the parsing of a RecMultipartMessage, when the Process method is called.
+    /// For each uploaded file a FileUploaded event is raised that
     /// contains the header information sent by the client, and a stream containing the data.
+    /// For each set of binary sent, a BinaryUploaded event is raised, and for each other data item
+    /// a DataReceived event is raised.
     /// </summary>
     public class MultipartManager {
         private List<DataItem> _dataItems = new List<DataItem>();
         private Stream _stream;
 
+        /// <summary>
+        /// Information about a simple data item.
+        /// </summary>
         public class DataItem {
             public string Name { get; private set; }
             public string Value { get; private set; }
@@ -75,6 +79,9 @@ namespace Babbacombe.SockLib {
             }
         }
 
+        /// <summary>
+        /// Arguments for the BinaryUploaded event.
+        /// </summary>
         public class BinaryUploadedEventArgs : EventArgs {
             public BinaryInfo Info { get; private set; }
             public Stream Contents { get; private set; }
@@ -85,16 +92,22 @@ namespace Babbacombe.SockLib {
             }
         }
 
+        /// <summary>
+        /// Raised when a binary item is being processed.
+        /// </summary>
         public event EventHandler<BinaryUploadedEventArgs> BinaryUploaded;
 
         /// <summary>
-        /// Information about the file currently being streamed.
+        /// Information about the file currently being processed.
         /// </summary>
         public class FileInfo : BinaryInfo {
             internal FileInfo(IDictionary<string, string> fields) : base(fields) { }
             public string Filename { get { return Fields.ContainsKey("Filename") ? Fields["Filename"] : null; } }
         }
 
+        /// <summary>
+        /// Arguments for the FileUploaded event.
+        /// </summary>
         public class FileUploadedEventArgs : EventArgs {
             public FileInfo Info { get; private set; }
             public Stream Contents { get; private set; }
@@ -110,6 +123,9 @@ namespace Babbacombe.SockLib {
         /// </summary>
         public event EventHandler<FileUploadedEventArgs> FileUploaded;
 
+        /// <summary>
+        /// Arguments for the DataReceived event.
+        /// </summary>
         public class DataReceivedEventArgs : EventArgs {
             public IDictionary<string, string> Items { get; private set; }
             public string Name { get; private set; }
@@ -130,22 +146,47 @@ namespace Babbacombe.SockLib {
         public event EventHandler<DataReceivedEventArgs> DataReceived;
 
         /// <summary>
-        /// The data items (excluding uploaded files) that have been received.
+        /// The data items (excluding uploaded files and binaries) that have been received.
         /// </summary>
         public IEnumerable<DataItem> DataItems { get { return _dataItems; } }
 
+        /// <summary>
+        /// Raises the BinaryUploaded event.
+        /// </summary>
+        /// <param name="info"></param>
+        /// <param name="contents"></param>
         protected virtual void OnBinaryUploaded(BinaryInfo info, Stream contents) {
             if (BinaryUploaded != null) BinaryUploaded(this, new BinaryUploadedEventArgs(info, contents));
         }
 
+        /// <summary>
+        /// Raises the FileUploaded event.
+        /// </summary>
+        /// <param name="info"></param>
+        /// <param name="contents"></param>
         protected virtual void OnFileUploaded(FileInfo info, Stream contents) {
             if (FileUploaded != null) FileUploaded(this, new FileUploadedEventArgs(info, contents));
         }
 
+        /// <summary>
+        /// Raises the DataReceived event.
+        /// </summary>
+        /// <param name="items"></param>
+        /// <param name="name"></param>
+        /// <param name="data"></param>
         protected virtual void OnDataReceived(IDictionary<string, string> items, string name, string data) {
             if (DataReceived != null) DataReceived(this, new DataReceivedEventArgs(items, name, data));
         }
 
+        /// <summary>
+        /// Creates a MultipartManager object operating on the given stream.
+        /// </summary>
+        /// <param name="stream">This would normally be the socket stream.</param>
+        /// <remarks>
+        /// Accessing the Manager property of a RecMultipartMessage will automatically create a base MultipartManager.
+        /// It is only necessary to set the Manager property and use this constructor to use a manager of a class derived
+        /// from MultipartManager.
+        /// </remarks>
         public MultipartManager(Stream stream) {
             _stream = stream;
         }
@@ -188,6 +229,10 @@ namespace Babbacombe.SockLib {
             }
         }
 
+        /// <summary>
+        /// Carries out processing asynchronously.
+        /// </summary>
+        /// <returns></returns>
         public async Task ProcessAsync() {
             await Task.Run(() => Process());
         }
