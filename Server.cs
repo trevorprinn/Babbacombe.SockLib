@@ -103,7 +103,7 @@ namespace Babbacombe.SockLib {
         /// Creates a server listening on localhost.
         /// </summary>
         /// <param name="port">The port number to listen on.</param>
-        public Server(int port) : this("127.0.0.1", port) { }
+        public Server(int port) : this(IPAddress.Any, port) { }
 
         /// <summary>
         /// Creates a server listening on a specific address.
