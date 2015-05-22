@@ -163,7 +163,7 @@ namespace Babbacombe.SockLib {
 
         private static IPAddress getHostAddress(string host) {
             try {
-                return Dns.GetHostAddresses(host)[0];
+                return Dns.GetHostAddresses(host).Single(a => a.AddressFamily == AddressFamily.InterNetwork);
             } catch {
                 return IPAddress.None;
             }
@@ -177,10 +177,13 @@ namespace Babbacombe.SockLib {
         public bool Open() {
             if (IsOpen) Close();
             try {
-                _client = new TcpClient(Host, Port);
+                _client = new TcpClient();
+                _client.Connect(HostEp);
                 _netStream = _client.GetStream();
             } catch (Exception ex) {
                 LastException = ex;
+                try { _client.Close(); } catch { }
+                _client = null;
                 return false;
             }
             if (Mode == Modes.Listening) startListening();

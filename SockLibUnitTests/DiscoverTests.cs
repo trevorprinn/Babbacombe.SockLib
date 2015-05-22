@@ -28,5 +28,30 @@ namespace SockLibUnitTests {
             ep = await client.FindService("MyTest");
             Assert.IsNull(ep);
         }
+
+        [TestMethod]
+        public async Task DiscoverOpen() {
+            IPEndPoint ep;
+            var client = new DiscoverClient(9000);
+            using (var server = new DiscoverServer(9000, "MyTest")) {
+                ep = await client.FindService("MyTest");
+                Assert.IsNotNull(ep);
+            }
+
+            using (Client c = new Client(ep)) {
+                Assert.IsFalse(c.Open());
+
+                using (var server = new Server(9000)) {
+                    Assert.IsTrue(c.Open());
+                }
+            }
+        }
+
+        [TestMethod]
+        public void NoSuchServer() {
+            using (var client = new Client("abcdefg", 9000)) {
+                Assert.IsFalse(client.Open());
+            }
+        }
     }
 }
