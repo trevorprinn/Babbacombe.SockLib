@@ -141,9 +141,20 @@ namespace Babbacombe.SockLib {
                 _givenHost = host;
         }
 
+        /// <summary>
+        /// Sets up (but does not open) a connection to the server.
+        /// </summary>
+        /// <param name="hostAddress">The address of the server.</param>
+        /// <param name="port">The port number of the server.</param>
+        /// <param name="mode">The mode to start the connection in. Defaults to Transaction.</param>
         public Client(IPAddress hostAddress, int port, Modes mode = Modes.Transaction)
             : this(new IPEndPoint(hostAddress, port), mode) { }
 
+        /// <summary>
+        /// Sets up (but does not open) a connection to the server.
+        /// </summary>
+        /// <param name="hostEp">The end point of the server.</param>
+        /// <param name="mode">The mode to start the connection in. Defaults to Transaction.</param>
         public Client(IPEndPoint hostEp, Modes mode = Modes.Transaction) {
             HostEp = hostEp;
             Mode = mode;
