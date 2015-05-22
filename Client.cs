@@ -64,13 +64,30 @@ namespace Babbacombe.SockLib {
         public bool ExceptionOnStatus { get; set; }
 
         /// <summary>
+        /// Gets the IPEndPoint of the server.
+        /// </summary>
+        public IPEndPoint HostEp { get; private set; }
+
+        /// <summary>
+        /// The host name passed in to the constructor (if there was one).
+        /// </summary>
+        private string _givenHost;
+
+        /// <summary>
         /// Gets the host name of the server.
         /// </summary>
-        public string Host { get; private set; }
+        /// <remarks>
+        /// If a host name was passed into the constructor, and the host was not found, the passed in name is returned,
+        /// otherwise the host name obtained from the DNS server is returned.
+        /// </remarks>
+        public string Host {
+            get { return HostEp.Address == IPAddress.None ? _givenHost : Dns.GetHostEntry(HostEp.Address).HostName; }
+        }
+
         /// <summary>
         /// Gets the port number of the server.
         /// </summary>
-        public int Port { get; private set; }
+        public int Port { get { return HostEp.Port; } }
 
         /// <summary>
         /// True in Listening mode while messages are being processed.
@@ -119,11 +136,26 @@ namespace Babbacombe.SockLib {
         /// <param name="host">The name or IP address of the server.</param>
         /// <param name="port">The port number of the server.</param>
         /// <param name="mode">The mode to start the connection in. Defaults to Transaction.</param>
-        public Client(string host, int port, Modes mode = Modes.Transaction) {
-            Host = host;
-            Port = port;
+        public Client(string host, int port, Modes mode = Modes.Transaction)
+            : this(getHostAddress(host), port, mode) {
+                _givenHost = host;
+        }
+
+        public Client(IPAddress hostAddress, int port, Modes mode = Modes.Transaction)
+            : this(new IPEndPoint(hostAddress, port), mode) { }
+
+        public Client(IPEndPoint hostEp, Modes mode = Modes.Transaction) {
+            HostEp = hostEp;
             Mode = mode;
             _trans = Transaction;
+        }
+
+        private static IPAddress getHostAddress(string host) {
+            try {
+                return Dns.GetHostAddresses(host)[0];
+            } catch {
+                return IPAddress.None;
+            }
         }
 
         /// <summary>
