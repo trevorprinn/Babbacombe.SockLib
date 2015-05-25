@@ -216,5 +216,43 @@ namespace SockLibUnitTests {
             foreach (var f in sendFiles.ToArray()) f.Dispose();
             foreach (var f in recFiles) File.Delete(f);
         }
+
+        [TestMethod]
+        public void AutoHandle() {
+            using (Server server = new Server(9000))
+            using (Client client = new Client("localhost", 9000)) {
+                server.Handlers.Add("request", (sc, msg) => {
+                    return new SendTextMessage("reply");
+                });
+                server.Handlers.Add("badrequest", (sc, msg) => {
+                    return new SendTextMessage("badreply");
+                });
+
+                Assert.IsTrue(client.Open());
+
+                int counter = 0;
+                client.Handlers.Add("reply", (c, r) => {
+                    counter++;
+                });
+
+                var reply = client.Transaction(new SendTextMessage("request"));
+                Assert.AreEqual(0, counter);
+                Assert.IsFalse(client.AutoHandled);
+
+                client.AutoHandle = true;
+                reply = client.Transaction(new SendTextMessage("request"));
+                Assert.AreEqual(1, counter);
+                Assert.IsTrue(client.AutoHandled);
+
+                reply = client.Transaction(new SendTextMessage("badrequest"));
+                Assert.AreEqual(1, counter);
+                Assert.IsFalse(client.AutoHandled);
+
+                client.AutoHandle = false;
+                reply = client.Transaction(new SendTextMessage("request"));
+                Assert.AreEqual(1, counter);
+                Assert.IsFalse(client.AutoHandled);
+            }
+        }
     }
 }

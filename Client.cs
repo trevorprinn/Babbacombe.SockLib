@@ -74,6 +74,17 @@ namespace Babbacombe.SockLib {
         private string _givenHost;
 
         /// <summary>
+        /// Gets or sets whether handlers are automatically called for Transaction replies. Defaults to False.
+        /// </summary>
+        public bool AutoHandle { get; set; }
+
+        /// <summary>
+        /// Gets whether a handler was called for the last Transaction reply. False if AutoHandle was false,
+        /// or if no handler has been set up for the command in the last reply.
+        /// </summary>
+        public bool AutoHandled { get; private set; }
+
+        /// <summary>
         /// Gets the host name of the server.
         /// </summary>
         /// <remarks>
@@ -254,7 +265,12 @@ namespace Babbacombe.SockLib {
                     var header = new RecMessageHeader(recStream);
                     if (header.IsEmpty) return null;
                     var reply = RecMessage.Create(header, recStream);
-                    if (ExceptionOnStatus && reply is RecStatusMessage) throw new StatusException((RecStatusMessage)reply);
+                    AutoHandled = false;
+                    if (AutoHandle && CallHandler(reply)) {
+                        AutoHandled = true;
+                    } else if (ExceptionOnStatus && reply is RecStatusMessage) {
+                        throw new StatusException((RecStatusMessage)reply);
+                    }
                     return reply;
                 } catch (SocketClosedException) {
                     throw new ServerClosedException();
@@ -330,9 +346,7 @@ namespace Babbacombe.SockLib {
                                 break;
                             }
                             var msg = RecMessage.Create(header, clientStream);
-                            if (Handlers.ContainsKey(header.Command)) {
-                                CallHandler(msg);
-                            } else {
+                            if (!CallHandler(msg)) {
                                 OnMessageReceived(RecMessage.Create(header, clientStream));
                             }
                             overrun = clientStream.GetOverrun();
@@ -365,11 +379,12 @@ namespace Babbacombe.SockLib {
         /// Calls the handler set up for the message's command, if there is one.
         /// </summary>
         /// <param name="recMessage"></param>
-        public void CallHandler(RecMessage recMessage) {
-            if (Handlers.ContainsKey(recMessage.Command)) {
-                var handler = Handlers[recMessage.Command];
-                handler.Invoke(this, recMessage);
-            }
+        /// <returns>True if a handler has been set up for the command.</returns>
+        public bool CallHandler(RecMessage recMessage) {
+            if (!Handlers.ContainsKey(recMessage.Command)) return false;
+            var handler = Handlers[recMessage.Command];
+            handler.Invoke(this, recMessage);
+            return true;
         }
 
         /// <summary>
