@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
     <metadata>
         <id>Babbacombe.SockLib</id>
-        <version>0.0.4</version>
+        <version>0.0.5</version>
         <title>Babbacombe Socket Library</title>
         <authors>Trevor Prinn</authors>
         <licenseUrl>https://github.com/trevorprinn/Babbacombe.SockLib/blob/master/LICENSE</licenseUrl>
