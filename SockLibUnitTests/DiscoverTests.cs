@@ -13,19 +13,19 @@ namespace SockLibUnitTests {
             IPEndPoint ep;
             var client = new DiscoverClient(9000);
             using (var server = new DiscoverServer(9000, "MyTest", 9001)) {
-                ep = await client.FindService("MyTest");
+                ep = await client.FindServiceAsync("MyTest");
                 Assert.IsNotNull(ep, "First Try");
                 Assert.AreEqual(9001, ep.Port);
 
-                ep = await client.FindService("Something");
+                ep = await client.FindServiceAsync("Something");
                 Assert.IsNull(ep);
 
-                ep = await client.FindService("MyTest");
+                ep = await client.FindServiceAsync("MyTest");
                 Assert.IsNotNull(ep, "Second Try");
                 Assert.AreEqual(9001, ep.Port);
             }
 
-            ep = await client.FindService("MyTest");
+            ep = await client.FindServiceAsync("MyTest");
             Assert.IsNull(ep);
         }
 
@@ -34,7 +34,7 @@ namespace SockLibUnitTests {
             IPEndPoint ep;
             var client = new DiscoverClient(9000);
             using (var server = new DiscoverServer(9000, "MyTest")) {
-                ep = await client.FindService("MyTest");
+                ep = await client.FindServiceAsync("MyTest");
                 Assert.IsNotNull(ep);
             }
 
@@ -52,6 +52,27 @@ namespace SockLibUnitTests {
             using (var client = new Client("abcdefg", 9000)) {
                 Assert.IsFalse(client.Open());
             }
+        }
+
+        [TestMethod]
+        public void DiscoverSync() {
+            IPEndPoint ep;
+            var client = new DiscoverClient(9000);
+            using (var server = new DiscoverServer(9000, "MyTest", 9001)) {
+                ep = client.FindService("MyTest");
+                Assert.IsNotNull(ep, "First Try");
+                Assert.AreEqual(9001, ep.Port);
+
+                ep = client.FindService("Something");
+                Assert.IsNull(ep);
+
+                ep = client.FindService("MyTest");
+                Assert.IsNotNull(ep, "Second Try");
+                Assert.AreEqual(9001, ep.Port);
+            }
+
+            ep = client.FindService("MyTest");
+            Assert.IsNull(ep);
         }
     }
 }

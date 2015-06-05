@@ -145,7 +145,7 @@ namespace SockLibUnitTests {
         /// </summary>
         [TestMethod]
         public async Task Listening() {
-            const int clientCount = 20;
+            const int clientCount = 5;
             const int serverMsgCount = 50;
             const int clientMsgCount = 50;
 

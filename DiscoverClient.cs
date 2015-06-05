@@ -43,7 +43,23 @@ namespace Babbacombe.SockLib {
             Timeout = 5000;
         }
 
-        public async Task<IPEndPoint> FindService(string serviceName) {
+        public IPEndPoint FindService(string serviceName) {
+            try {
+                using (var client = new UdpClient()) {
+                    client.Client.SendTimeout = Timeout;
+                    client.Client.ReceiveTimeout = Timeout;
+                    var name = Encoding.UTF8.GetBytes(serviceName);
+                    client.Send(name, name.Length, _broadcast);
+                    IPEndPoint rep = null;
+                    var msg = client.Receive(ref rep);
+                    return getEp(msg, rep, serviceName);
+                }
+            } catch (SocketException) {
+                return null;
+            }
+        }
+
+        public async Task<IPEndPoint> FindServiceAsync(string serviceName) {
             using (var client = new UdpClient()) {
                 var cts = new CancellationTokenSource(Timeout);
                 await client.SendAsync(Encoding.UTF8.GetBytes(serviceName), _broadcast, cts.Token);
@@ -53,16 +69,19 @@ namespace Babbacombe.SockLib {
                 var msg = await client.ReceiveAsync(cts.Token);
                 if (msg == null) return null; // Timed out
 
-
-                var advert = Encoding.UTF8.GetString(msg.Value.Buffer);
-                if (!advert.Contains(':')) return null;
-                var parts = advert.Split(':');
-                if (parts[0] != serviceName) return null;
-
-                int port;
-                if (!int.TryParse(parts[1], out port)) return null;
-                return new IPEndPoint(msg.Value.RemoteEndPoint.Address, port);
+                return getEp(msg.Value.Buffer, msg.Value.RemoteEndPoint, serviceName);
             }
+        }
+
+        private IPEndPoint getEp(byte[] msg, IPEndPoint rep, string serviceName) {
+            var advert = Encoding.UTF8.GetString(msg);
+            if (!advert.Contains(':')) return null;
+            var parts = advert.Split(':');
+            if (parts[0] != serviceName) return null;
+
+            int port;
+            if (!int.TryParse(parts[1], out port)) return null;
+            return new IPEndPoint(rep.Address, port);
         }
     }
 }
