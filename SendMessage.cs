@@ -268,7 +268,7 @@ namespace Babbacombe.SockLib {
 
         public SendMultipartMessage(string command, IEnumerable<BaseItem> items = null) {
             Command = command;
-            Items = items.ToList();
+            if (items != null) Items = items.ToList();
         }
 
         public abstract class BaseItem : Dictionary<string, string> {
@@ -385,16 +385,14 @@ namespace Babbacombe.SockLib {
 
                 if (item.DataIsStream) {
                     var datastream = OnGetItemStream(item);
-                    var disposeStream = false;
                     var fileItem = item as FileItem;
                     if (datastream == null && fileItem != null && File.Exists(fileItem.Filename)) {
                         datastream = File.OpenRead(fileItem.Filename);
-                        disposeStream = true;
                     }
                     try {
                         if (datastream != null) {
                             datastream.CopyTo(stream);
-                            if (disposeStream) datastream.Dispose();
+                            datastream.Dispose();
                         }
                     } catch (IOException) {
                         throw new SocketClosedException();

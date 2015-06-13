@@ -138,6 +138,24 @@ namespace SockLibUnitTests {
             cleanUp();
         }
 
+        [TestMethod]
+        public void MultipartStream() {
+            var file = new RandomFile(10.Megs());
+            var item = new SendMultipartMessage.FileItem("abc.dat");
+            var msg = new SendMultipartMessage("");
+            msg.Items.Add(item);
+            msg.GetItemStream += (sender, e) => {
+                e.Stream = file.GetStream();
+            };
+            var recMsg = (RecMultipartMessage)transferMessage(msg, true);
+            recMsg.Manager.FileUploaded += (sender, e) => {
+                Assert.IsTrue(file.IsEqual(e.Contents));
+            };
+            recMsg.Manager.Process();
+            file.Dispose();
+            _tempFiles.Clear();
+        }
+
         private static void cleanUp() {
             foreach (var f in _tempFiles) f.Delete();
             _tempFiles.Clear();
