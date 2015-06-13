@@ -1,14 +1,15 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+<package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
     <metadata>
         <id>Babbacombe.SockLib.Xam.Android</id>
-        <version>0.0.5</version>
+        <version>0.0.6</version>
         <title>Babbacombe SockLib Library (Android build)</title>
         <authors>Trevor Prinn</authors>
         <licenseUrl>https://github.com/trevorprinn/Babbacombe.SockLib/blob/master/LICENSE</licenseUrl>
         <projectUrl>https://github.com/trevorprinn/Babbacombe.SockLib</projectUrl>
         <requireLicenseAcceptance>false</requireLicenseAcceptance>
         <description>A general purpose Client/Server socket library for Windows and Android.</description>
+        <copyright>Copyright © Babbacombe Computers Ltd 2015</copyright>
     </metadata>
     <files>
         <file src="bin\Release\SockLib.Xam.Android.dll" target="lib\SockLib.Xam.Android.dll" />
