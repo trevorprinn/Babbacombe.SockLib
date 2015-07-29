@@ -160,6 +160,7 @@ namespace Babbacombe.SockLib {
                         RecMessageHeader header;
                         SendMessage reply = null;
                         using (var recStream = new DelimitedStream(client.Client.GetStream(), overrun)) {
+							if (recStream.Delimiter == null) break;
                             // Wait until a message is received.
                             header = new RecMessageHeader(recStream);
                             if (header.IsEmpty) break;

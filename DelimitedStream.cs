@@ -50,7 +50,9 @@ namespace Babbacombe.SockLib {
         public DelimitedStream(Stream stream, byte[] overrun = null) {
             _stream = stream;
             if (overrun != null) PushbackOverrun(overrun);
-            Delimiter = readLine(true);
+			try {
+            	Delimiter = readLine(true);
+			} catch (IOException) { }
         }
 
         public override bool CanRead {
