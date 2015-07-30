@@ -25,6 +25,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
@@ -205,7 +206,7 @@ namespace Babbacombe.SockLib {
         /// Closes the connection to the server.
         /// </summary>
         public void Close() {
-            if (!IsOpen) return;
+            if (_client == null) return;
             if (_listeningThread != null) _stopListening = true;
             while (_listeningThread != null) Thread.Sleep(20);
             _client.Close();
@@ -263,7 +264,10 @@ namespace Babbacombe.SockLib {
                     message.Send(_netStream);
                     var recStream = new DelimitedStream(_netStream);
                     var header = new RecMessageHeader(recStream);
-                    if (header.IsEmpty) return null;
+                    if (header.IsEmpty) {
+                        Close();
+                        throw new ServerClosedException();
+                    }
                     var reply = RecMessage.Create(header, recStream);
                     AutoHandled = false;
                     if (AutoHandle && CallHandler(reply)) {
@@ -273,6 +277,7 @@ namespace Babbacombe.SockLib {
                     }
                     return reply;
                 } catch (SocketClosedException) {
+                    Close();
                     throw new ServerClosedException();
                 }
             }
@@ -391,7 +396,15 @@ namespace Babbacombe.SockLib {
         /// Gets whether the connection is currently open.
         /// </summary>
         public bool IsOpen {
-            get { return _client != null; }
+            get {
+                if (_client == null) return false;
+                var state = IPGlobalProperties.GetIPGlobalProperties()
+                    .GetActiveTcpConnections()
+                    .SingleOrDefault(x => x.LocalEndPoint.Equals(_client.Client.LocalEndPoint));
+                if (state.State == TcpState.Established) return true;
+                Close();
+                return false;
+            }
         }
     }
 
