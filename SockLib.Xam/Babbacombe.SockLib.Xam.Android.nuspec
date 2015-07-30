@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
     <metadata>
         <id>Babbacombe.SockLib.Xam.Android</id>
-        <version>0.0.6</version>
+        <version>0.0.7</version>
         <title>Babbacombe SockLib Library (Android build)</title>
         <authors>Trevor Prinn</authors>
         <licenseUrl>https://github.com/trevorprinn/Babbacombe.SockLib/blob/master/LICENSE</licenseUrl>
@@ -12,7 +12,6 @@
         <copyright>Copyright © Babbacombe Computers Ltd 2015</copyright>
     </metadata>
     <files>
-        <file src="bin\Release\SockLib.Xam.Android.dll" target="lib\SockLib.Xam.Android.dll" />
-        <file src="bin\Release\SockLib.Xam.Android.xml" target="lib\SockLib.Xam.Android.xml" />
+        <file src="bin\Release\Babbacombe.SockLib.Xam.Android.dll" target="lib\Babbacombe.SockLib.Xam.Android.dll" />
     </files>
 </package>
