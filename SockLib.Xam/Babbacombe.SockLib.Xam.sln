@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2012
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SockLib.Xam.Android", "SockLib.Xam.Android.csproj", "{8D377289-35BF-43CF-825E-1B412DDBC9A7}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Babbacombe.SockLib.Xam.Android", "Babbacombe.SockLib.Xam.Android.csproj", "{8D377289-35BF-43CF-825E-1B412DDBC9A7}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

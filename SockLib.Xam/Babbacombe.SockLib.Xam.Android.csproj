@@ -6,13 +6,13 @@
     <ProjectTypeGuids>{EFBA0AD7-5A72-4C68-AF49-83D382785DCF};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
     <ProjectGuid>{8D377289-35BF-43CF-825E-1B412DDBC9A7}</ProjectGuid>
     <OutputType>Library</OutputType>
-    <RootNamespace>SockLib.Xam.Android</RootNamespace>
+    <RootNamespace>Babbacombe.SockLib</RootNamespace>
     <AndroidResgenFile>Resources\Resource.designer.cs</AndroidResgenFile>
     <AndroidResgenClass>Resource</AndroidResgenClass>
     <MonoAndroidResourcePrefix>Resources</MonoAndroidResourcePrefix>
     <MonoAndroidAssetsPrefix>Assets</MonoAndroidAssetsPrefix>
     <AndroidUseLatestPlatformSdk>False</AndroidUseLatestPlatformSdk>
-    <AssemblyName>SockLib.Xam.Android</AssemblyName>
+    <AssemblyName>Babbacombe.SockLib.Xam.Android</AssemblyName>
     <TargetFrameworkVersion>v4.0.3</TargetFrameworkVersion>
     <ReleaseVersion>0.0.1.0</ReleaseVersion>
   </PropertyGroup>
@@ -34,7 +34,6 @@
     <WarningLevel>4</WarningLevel>
     <ConsolePause>false</ConsolePause>
     <AndroidUseSharedRuntime>false</AndroidUseSharedRuntime>
-    <DocumentationFile>bin\Release\SockLib.Xam.Android.xml</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />

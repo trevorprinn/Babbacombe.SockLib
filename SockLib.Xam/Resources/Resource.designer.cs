@@ -9,9 +9,9 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-[assembly: global::Android.Runtime.ResourceDesignerAttribute("SockLib.Xam.Android.Resource", IsApplication=false)]
+[assembly: global::Android.Runtime.ResourceDesignerAttribute("Babbacombe.SockLib.Resource", IsApplication=false)]
 
-namespace SockLib.Xam.Android
+namespace Babbacombe.SockLib
 {
 	
 	
