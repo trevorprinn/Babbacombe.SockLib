@@ -95,9 +95,9 @@ namespace Babbacombe.SockLib {
         public event EventHandler<FilenamesMessageReceivedEventArgs> FilenamesMessageReceived;
 
         /// <summary>
-        /// Gets and sets the handlers declared for messages received from clients.
+        /// Gets the handlers declared for messages received from clients.
         /// </summary>
-        public Dictionary<string, ServerHandler> Handlers = new Dictionary<string, ServerHandler>();
+        public ServerHandlers Handlers { get; private set; }
 
         /// <summary>
         /// Creates a server listening on localhost.
@@ -124,6 +124,8 @@ namespace Babbacombe.SockLib {
         /// </summary>
         /// <param name="address">The address/port to listen on.</param>
         public Server(IPEndPoint address) {
+            Handlers = new ServerHandlers();
+
             _listener = new TcpListener(address);
             _listenThread = new Thread(new ThreadStart(listen));
             _listener.Start();
@@ -170,8 +172,7 @@ namespace Babbacombe.SockLib {
                             // needs to be put back onto the beginning of the next stream.
                             if (Handlers.ContainsKey(msg.Command)) {
                                 // There's a handler for this command, so call it.
-                                var handler = Handlers[msg.Command];
-                                reply = handler.Invoke(client, msg);
+                                reply = Handlers.Invoke(msg.Command, client, msg);
                             } else {
                                 if (msg is RecFilenamesMessage) {
                                     reply = OnFilenamesMessageReceived(client, (RecFilenamesMessage)msg);
@@ -276,5 +277,40 @@ namespace Babbacombe.SockLib {
         }
     }
 
+    public class ServerHandlers {
+        private class HandlerItem {
+            public virtual bool IsGeneric { get { return false; } }
+            public ServerHandler Handler { get; set; }
+            public virtual SendMessage Invoke(ServerClient client, RecMessage message) {
+                return Handler.Invoke(client, message);
+            }
+        }
+        private class HandlerItem<T> : HandlerItem where T : RecMessage {
+            public override bool IsGeneric { get { return true; } }
+            public new ServerHandler<T> Handler { get; set; }
+            public override SendMessage Invoke(ServerClient client, RecMessage message) {
+                return Handler.Invoke(client, (T)message);
+            }
+        }
+        private Dictionary<string, HandlerItem> _handlers = new Dictionary<string, HandlerItem>();
+
+        public void Add(string key, ServerHandler handler) {
+            _handlers.Add(key, new HandlerItem { Handler = handler });
+        }
+
+        public void Add<T>(string key, ServerHandler<T> handler) where T : RecMessage {
+            _handlers.Add(key, new HandlerItem<T> { Handler = handler });
+        }
+
+        internal bool ContainsKey(string key) { return _handlers.ContainsKey(key); }
+
+        internal SendMessage Invoke(string key, ServerClient client, RecMessage message) {
+            var item = _handlers[key];
+            return item.Invoke(client, message);
+        }
+    }
+
     public delegate SendMessage ServerHandler(ServerClient client, RecMessage message);
+
+    public delegate SendMessage ServerHandler<T>(ServerClient client, T message) where T : RecMessage;
 }

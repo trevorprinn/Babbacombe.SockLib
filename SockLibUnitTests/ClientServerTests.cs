@@ -19,7 +19,7 @@ namespace SockLibUnitTests {
         public void OneTextTransaction() {
             using (Server server = new Server(9000)) 
             using (Client client = new Client("localhost", 9000)) {
-                server.Handlers.Add("Test", echoText);
+                server.Handlers.Add<RecTextMessage>("Test", echoText);
 
                 Assert.IsFalse(client.IsOpen, "IsOpen");
                 client.Open();
@@ -41,10 +41,10 @@ namespace SockLibUnitTests {
             }
         }
 
-        private SendMessage echoText(ServerClient c, RecMessage r) {
+        private SendMessage echoText(ServerClient c, RecTextMessage r) {
             Assert.IsInstanceOfType(r, typeof(RecTextMessage));
 
-            return new SendTextMessage(r.Command, ((RecTextMessage)r).Text);
+            return new SendTextMessage(r.Command, r.Text);
         }
 
         /// <summary>
@@ -55,7 +55,7 @@ namespace SockLibUnitTests {
             const int clientCount = 25;
             const int transCount = 25;
             using (Server server = new Server(9000)) {
-                server.Handlers.Add("Test", echoText);
+                server.Handlers.Add<RecTextMessage>("Test", echoText);
 
                 List<Client> clients = new List<Client>();
                 for (int i = 0; i < clientCount; i++) {
@@ -76,22 +76,19 @@ namespace SockLibUnitTests {
         }
 
         /// <summary>
-        /// Tests that a ServerClosedException occurs at the client end when the server is closed and
-        /// the client attempts a transaction.
+        /// Tests that the client is closed when the server closes.
         /// </summary>
         [TestMethod]
         public void CloseServer() {
             Client client;
             using (Server server = new Server(9000)) {
-                server.Handlers.Add("Test", echoText);
+                server.Handlers.Add<RecTextMessage>("Test", echoText);
                 client = new Client("localhost", 9000);
                 client.Open();
 
                 client.Transaction(new SendTextMessage("Test", "abc"));
             }
-            try {
-                client.Transaction(new SendTextMessage("Test", "xyz"));
-            } catch (ServerClosedException) { }
+            Assert.IsFalse(client.IsOpen);
             client.Dispose();
         }
 
@@ -102,7 +99,7 @@ namespace SockLibUnitTests {
         public void SimpleListen() {
             using (Server server = new Server(9000))
             using (Client client = new Client("localhost", 9000, Client.Modes.Listening)) {
-                server.Handlers.Add("Test", echoTextDelayed);
+                server.Handlers.Add<RecTextMessage>("Test", echoTextDelayed);
                 client.Open();
                 int msgCount = 0;
 
@@ -119,7 +116,7 @@ namespace SockLibUnitTests {
         [TestMethod]
         public void CloseClient() {
             using (Server server = new Server(9000)) {
-                server.Handlers.Add("Test", echoTextDelayed);
+                server.Handlers.Add<RecTextMessage>("Test", echoTextDelayed);
 
                 using (Client client = new Client("localhost", 9000, Client.Modes.Listening)) {
                     client.Open();
@@ -133,9 +130,9 @@ namespace SockLibUnitTests {
             }
         }
 
-        private SendMessage echoTextDelayed(ServerClient c, RecMessage r) {
+        private SendMessage echoTextDelayed(ServerClient c, RecTextMessage r) {
             Thread.Sleep(3000);
-            return new SendTextMessage(r.Command, ((RecTextMessage)r).Text);
+            return new SendTextMessage(r.Command, r.Text);
         }
 
         /// <summary>
@@ -169,6 +166,9 @@ namespace SockLibUnitTests {
 
                 // Wait until all the messages have been sent.
                 await Task.WhenAll(tasks);
+
+                // Wait for the last few messages to be received and processed.
+                await Task.Delay(2000);
 
                 foreach (var c in clients) {
                     // Check the client didn't drop out of listening mode due to an exception.
