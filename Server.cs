@@ -42,6 +42,17 @@ namespace Babbacombe.SockLib {
 
         private List<ServerClient> _clients = new List<ServerClient>();
 
+        public class ClientAddedRemovedEventArgs : EventArgs {
+            public ServerClient Client { get; private set; }
+            public ClientAddedRemovedEventArgs(ServerClient client) {
+                Client = client;
+            }
+        }
+
+        public event EventHandler<ClientAddedRemovedEventArgs> ClientAdded;
+
+        public event EventHandler<ClientAddedRemovedEventArgs> ClientRemoved;
+
         /// <summary>
         /// Arguments for the MessageReceived event.
         /// </summary>
@@ -154,6 +165,7 @@ namespace Babbacombe.SockLib {
                 client.OnCreated();
 
                 lock (_clients) _clients.Add(client);
+                OnClientAdded(client);
 
                 byte[] overrun = null;
                 try {
@@ -192,11 +204,20 @@ namespace Babbacombe.SockLib {
                     } while (true);
                 } finally {
                     lock (_clients) {
-                        client.Dispose();
                         _clients.Remove(client);
+                        OnClientRemoved(client);
+                        client.Dispose();
                     }
                 }
             }
+        }
+
+        protected virtual void OnClientAdded(ServerClient client) {
+            if (ClientAdded != null) ClientAdded(this, new ClientAddedRemovedEventArgs(client));
+        }
+
+        protected virtual void OnClientRemoved(ServerClient client) {
+            if (ClientRemoved != null) ClientRemoved(this, new ClientAddedRemovedEventArgs(client));
         }
 
         /// <summary>
