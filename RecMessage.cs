@@ -84,6 +84,10 @@ namespace Babbacombe.SockLib {
 
         public string Text { get { return this.Encoding.GetString(_data.ToArray()); } }
 
+        public IEnumerable<string> Lines {
+            get { return Text.Split('\n').Select(f => f.TrimEnd('\r')); }
+        }
+
         protected virtual Encoding Encoding { get { return Encoding.UTF8; } }
     }
 
@@ -149,8 +153,8 @@ namespace Babbacombe.SockLib {
 
         internal RecFilenamesMessage(RecMessageHeader header, Stream stream)
             : base(header, stream) {
-            Filenames = Text.Split('\n').Select(f => f.TrimEnd('\r')
-                .Replace('\\', Path.DirectorySeparatorChar).Replace('/', Path.DirectorySeparatorChar)).ToArray();
+            Filenames = Lines.Select(f => 
+                f.Replace('\\', Path.DirectorySeparatorChar).Replace('/', Path.DirectorySeparatorChar)).ToArray();
         }
 
         public SendMultipartMessage CreateDefaultMessage() {
