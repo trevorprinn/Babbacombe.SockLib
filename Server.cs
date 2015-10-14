@@ -42,15 +42,28 @@ namespace Babbacombe.SockLib {
 
         private List<ServerClient> _clients = new List<ServerClient>();
 
+        /// <summary>
+        /// Arguments of the ClientAdded and ClientRemoved events.
+        /// </summary>
         public class ClientAddedRemovedEventArgs : EventArgs {
+            /// <summary>
+            /// The client that was added or removed.
+            /// </summary>
             public ServerClient Client { get; private set; }
-            public ClientAddedRemovedEventArgs(ServerClient client) {
+            private ClientAddedRemovedEventArgs() { }
+            internal ClientAddedRemovedEventArgs(ServerClient client) {
                 Client = client;
             }
         }
 
+        /// <summary>
+        /// Raised when a client connects and has been added to the Clients list.
+        /// </summary>
         public event EventHandler<ClientAddedRemovedEventArgs> ClientAdded;
 
+        /// <summary>
+        /// Raised when a client disconnects and has been removed from the Clients list.
+        /// </summary>
         public event EventHandler<ClientAddedRemovedEventArgs> ClientRemoved;
 
         /// <summary>
@@ -86,6 +99,7 @@ namespace Babbacombe.SockLib {
 
         /// <summary>
         /// Arguments for the FilenamesMessageReceived event.
+        /// The default Reply will send the requested files.
         /// </summary>
         public class FilenamesMessageReceivedEventArgs : MessageReceivedEventArgs {
             /// <summary>
@@ -177,11 +191,8 @@ namespace Babbacombe.SockLib {
 							if (recStream.Delimiter == null) break;
                             // Wait until a message is received.
                             header = new RecMessageHeader(recStream);
-                            if (header.IsEmpty) break;
+                            if (header.IsEmpty) break; // The stream has ended so the client is disconnected.
                             msg = RecMessage.Create(header, recStream);
-                            // If there is more than one message waiting, the DelimitedStream
-                            // may have buffered past the end of the first message. This overrun
-                            // needs to be put back onto the beginning of the next stream.
                             if (Handlers.HasHandler(msg.Command)) {
                                 // There's a handler for this command, so call it.
                                 reply = Handlers.Invoke(msg.Command, client, msg);
@@ -193,6 +204,9 @@ namespace Babbacombe.SockLib {
                                     reply = OnMessageReceived(client, msg);
                                 }
                             }
+                            // If there is more than one message waiting, the DelimitedStream
+                            // may have buffered past the end of the first message. This overrun
+                            // needs to be put back onto the beginning of the next stream.
                             overrun = recStream.GetOverrun();
                         }
                         if (reply != null) {
@@ -206,16 +220,23 @@ namespace Babbacombe.SockLib {
                     lock (_clients) {
                         _clients.Remove(client);
                         OnClientRemoved(client);
-                        client.Dispose();
                     }
                 }
             }
         }
 
+        /// <summary>
+        /// Raises the ClientAdded event.
+        /// </summary>
+        /// <param name="client">The client that has just connected.</param>
         protected virtual void OnClientAdded(ServerClient client) {
             if (ClientAdded != null) ClientAdded(this, new ClientAddedRemovedEventArgs(client));
         }
 
+        /// <summary>
+        /// Raises the ClientRemoved event.
+        /// </summary>
+        /// <param name="client">The client that has just disconnected.</param>
         protected virtual void OnClientRemoved(ServerClient client) {
             if (ClientRemoved != null) ClientRemoved(this, new ClientAddedRemovedEventArgs(client));
         }
@@ -298,6 +319,9 @@ namespace Babbacombe.SockLib {
         }
     }
 
+    /// <summary>
+    /// A list of the handlers defined for a server.
+    /// </summary>
     public class ServerHandlers {
         private class HandlerItem {
             public ServerHandler Handler { get; set; }
@@ -313,10 +337,23 @@ namespace Babbacombe.SockLib {
         }
         private Dictionary<string, HandlerItem> _handlers = new Dictionary<string, HandlerItem>();
 
+        internal ServerHandlers() { }
+
+        /// <summary>
+        /// Adds a handler to the server.
+        /// </summary>
+        /// <param name="command">The command to handle.</param>
+        /// <param name="handler">The handler routine.</param>
         public void Add(string command, ServerHandler handler) {
             _handlers.Add(command, new HandlerItem { Handler = handler });
         }
 
+        /// <summary>
+        /// Adds a typed handler to the server.
+        /// </summary>
+        /// <typeparam name="T">The type of message that will be received for this command.</typeparam>
+        /// <param name="command">The command to handle.</param>
+        /// <param name="handler">The handler routine.</param>
         public void Add<T>(string command, ServerHandler<T> handler) where T : RecMessage {
             _handlers.Add(command, new HandlerItem<T> { Handler = handler });
         }
@@ -329,7 +366,20 @@ namespace Babbacombe.SockLib {
         }
     }
 
+    /// <summary>
+    /// The type of handlers for messages received from clients.
+    /// </summary>
+    /// <param name="client">The client that sent the message.</param>
+    /// <param name="message">The message to process.</param>
+    /// <returns>The reply to send, or null if no reply is to be sent (only use if the client is in Listening mode).</returns>
     public delegate SendMessage ServerHandler(ServerClient client, RecMessage message);
 
+    /// <summary>
+    /// The type of handlers for messages received from clients.
+    /// </summary>
+    /// <typeparam name="T">The type of message that will be received.</typeparam>
+    /// <param name="client">The client that sent the message.</param>
+    /// <param name="message">The message to process.</param>
+    /// <returns>The reply to send, or null if no reply is to be sent (only use if the client is in Listening mode).</returns>
     public delegate SendMessage ServerHandler<T>(ServerClient client, T message) where T : RecMessage;
 }

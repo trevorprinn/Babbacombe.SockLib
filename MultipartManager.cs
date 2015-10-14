@@ -45,10 +45,16 @@ namespace Babbacombe.SockLib {
         /// Information about a simple data item.
         /// </summary>
         public class DataItem {
+            /// <summary>
+            /// The name of the data item
+            /// </summary>
             public string Name { get; private set; }
+            /// <summary>
+            /// The value of the data item
+            /// </summary>
             public string Value { get; private set; }
             private DataItem() { }
-            public DataItem(string name, string value) {
+            internal DataItem(string name, string value) {
                 Name = name;
                 Value = value;
             }
@@ -58,11 +64,17 @@ namespace Babbacombe.SockLib {
         /// Information about the binary info currently being streamed.
         /// </summary>
         public class BinaryInfo {
+            /// <summary>
+            /// The fields defined with the binary data
+            /// </summary>
             public IDictionary<string, string> Fields { get; private set; }
             private BinaryInfo() { }
             internal BinaryInfo(IDictionary<string, string> fields) {
                 Fields = fields;
             }
+            /// <summary>
+            /// The name of the data item
+            /// </summary>
             public string Name { get { return Fields.ContainsKey("Name") ? Fields["Name"] : null; } }
 
             /// <summary>
@@ -70,6 +82,7 @@ namespace Babbacombe.SockLib {
             /// </summary>
             /// <param name="s"></param>
             /// <returns></returns>
+            /// <remarks>If desired, the binary stream can be passed to this method</remarks>
             public byte[] Read(Stream s) {
                 using (var mem = new MemoryStream(8192)) {
                     s.CopyTo(mem);
@@ -83,7 +96,13 @@ namespace Babbacombe.SockLib {
         /// Arguments for the BinaryUploaded event.
         /// </summary>
         public class BinaryUploadedEventArgs : EventArgs {
+            /// <summary>
+            /// Header information included with the binary
+            /// </summary>
             public BinaryInfo Info { get; private set; }
+            /// <summary>
+            /// The binary data
+            /// </summary>
             public Stream Contents { get; private set; }
             private BinaryUploadedEventArgs() { }
             internal BinaryUploadedEventArgs(BinaryInfo info, Stream contents) {
@@ -102,6 +121,9 @@ namespace Babbacombe.SockLib {
         /// </summary>
         public class FileInfo : BinaryInfo {
             internal FileInfo(IDictionary<string, string> fields) : base(fields) { }
+            /// <summary>
+            /// Gets the name of the file being uploaded.
+            /// </summary>
             public string Filename { get { return Fields.ContainsKey("Filename") ? Fields["Filename"] : null; } }
         }
 
@@ -109,7 +131,13 @@ namespace Babbacombe.SockLib {
         /// Arguments for the FileUploaded event.
         /// </summary>
         public class FileUploadedEventArgs : EventArgs {
+            /// <summary>
+            /// Gets header information about the file being uploaded.
+            /// </summary>
             public FileInfo Info { get; private set; }
+            /// <summary>
+            /// The binary contents of the file being uploaded.
+            /// </summary>
             public Stream Contents { get; private set; }
             private FileUploadedEventArgs() { }
             internal FileUploadedEventArgs(FileInfo info, Stream contents) {
@@ -127,8 +155,17 @@ namespace Babbacombe.SockLib {
         /// Arguments for the DataReceived event.
         /// </summary>
         public class DataReceivedEventArgs : EventArgs {
+            /// <summary>
+            /// All of the data values received for this data item
+            /// </summary>
             public IDictionary<string, string> Items { get; private set; }
+            /// <summary>
+            /// The name of the data item
+            /// </summary>
             public string Name { get; private set; }
+            /// <summary>
+            /// The value of the data item
+            /// </summary>
             public string Value { get; private set; }
             private DataReceivedEventArgs() { }
             internal DataReceivedEventArgs(IDictionary<string, string> items, string name, string value) {

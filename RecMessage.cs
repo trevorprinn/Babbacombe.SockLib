@@ -184,6 +184,7 @@ namespace Babbacombe.SockLib {
         }
     }
 
+    [Serializable]
     public class UnknownMessageTypeException : ApplicationException {
         public UnknownMessageTypeException(char type)
             : base(string.Format("Unknown Message Type '{0}' received", type)) { }

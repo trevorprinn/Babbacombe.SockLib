@@ -36,13 +36,25 @@ namespace Babbacombe.SockLib {
     public class DiscoverClient {
         private IPEndPoint _broadcast;
 
-        public int Timeout { get; private set; }
+        /// <summary>
+        /// Gets or Sets the send and receive timeouts when finding the service, in millisecs.
+        /// </summary>
+        public int Timeout { get; set; }
 
+        /// <summary>
+        /// Creates a discovery client to search for a discovery server.
+        /// </summary>
+        /// <param name="port">The UDP port to use for the search.</param>
         public DiscoverClient(int port) {
             _broadcast = new IPEndPoint(IPAddress.Broadcast, port);
             Timeout = 5000;
         }
 
+        /// <summary>
+        /// Broadcasts a request for a reply from a discovery server.
+        /// </summary>
+        /// <param name="serviceName">The name of the service the discovery server supports.</param>
+        /// <returns>The end point of the service, or null if no server was found.</returns>
         public IPEndPoint FindService(string serviceName) {
             try {
                 using (var client = new UdpClient()) {
@@ -59,6 +71,11 @@ namespace Babbacombe.SockLib {
             }
         }
 
+        /// <summary>
+        /// Broadcasts a request for a reply from a discovery server.
+        /// </summary>
+        /// <param name="serviceName">The name of the service the discovery server supports.</param>
+        /// <returns>The end point of the service, or null if no server was found.</returns>
         public async Task<IPEndPoint> FindServiceAsync(string serviceName) {
             using (var client = new UdpClient()) {
                 var cts = new CancellationTokenSource(Timeout);

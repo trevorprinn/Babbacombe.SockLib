@@ -271,6 +271,7 @@ namespace Babbacombe.SockLib {
             if (items != null) Items = items.ToList();
         }
 
+        [Serializable]
         public abstract class BaseItem : Dictionary<string, string> {
             protected BaseItem(string name) {
                 this["Name"] = name;
@@ -419,6 +420,7 @@ namespace Babbacombe.SockLib {
         }
     }
 
+    [Serializable]
     public class SocketClosedException : ApplicationException {
         public SocketClosedException() { }
         public SocketClosedException(Exception inner) : base("Socket Closed", inner) { }

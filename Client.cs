@@ -116,7 +116,7 @@ namespace Babbacombe.SockLib {
             /// The message that has been received from the server.
             /// </summary>
             public RecMessage Message { get; private set; }
-            public MessageReceivedEventArgs(RecMessage message) {
+            internal MessageReceivedEventArgs(RecMessage message) {
                 Message = message;
             }
         }
@@ -229,7 +229,6 @@ namespace Babbacombe.SockLib {
         protected virtual void OnServerClosed() {
             if (ServerClosed != null) ServerClosed(this, EventArgs.Empty);
         }
-
         
         /// <summary>
         /// Begins an asynchronous Transaction() call. Can be called only in Transaction mode.
@@ -237,7 +236,7 @@ namespace Babbacombe.SockLib {
         /// <param name="message">The message to send to the server.</param>
         /// <param name="callback">The function to process the reply.</param>
         /// <param name="data">User data to pass to the callback function.</param>
-        /// <returns></returns>
+        /// <returns>A cookie to pass into an EndTransaction call.</returns>
         public IAsyncResult BeginTransaction(SendMessage message, AsyncCallback callback = null, object data = null) {
             if (_mode != Modes.Transaction) throw new ClientModeException(true);
             return _trans.BeginInvoke(message, callback, data);
@@ -246,10 +245,20 @@ namespace Babbacombe.SockLib {
         /// <summary>
         /// Ends an asynchronous Transaction() call.
         /// </summary>
-        /// <param name="cookie"></param>
-        /// <returns></returns>
+        /// <param name="cookie">The cookie returned from the BeginTransaction call.</param>
+        /// <returns>The reply from the server.</returns>
         public RecMessage EndTransaction(IAsyncResult cookie) {
             return _trans.EndInvoke(cookie);
+        }
+
+        /// <summary>
+        /// Ends an asynchronous Transaction call.
+        /// </summary>
+        /// <typeparam name="T">The type of the message expected from the server.</typeparam>
+        /// <param name="cookie">The cookie returned from the BeginTransaction call.</param>
+        /// <returns>The reply from the server.</returns>
+        public T EndTransaction<T>(IAsyncResult cookie) where T : RecMessage {
+            return (T)_trans.EndInvoke(cookie);
         }
 
         /// <summary>
@@ -285,19 +294,40 @@ namespace Babbacombe.SockLib {
         }
 
         /// <summary>
+        /// Sends a message to the server and waits for the reply. Can be called only in Transaction mode.
+        /// </summary>
+        /// <typeparam name="T">The type of the message expected from the server.</typeparam>
+        /// <param name="message">The message to send to the server.</param>
+        /// <returns>The reply from the server.</returns>
+        public T Transaction<T>(SendMessage message) where T : RecMessage {
+            return (T)Transaction(message);
+        }
+
+        /// <summary>
         /// Carries out a Transaction() call asynchronously. Can only be called in Transaction mode.
         /// </summary>
-        /// <param name="message"></param>
-        /// <returns></returns>
+        /// <param name="message">The message to send to the server.</param>
+        /// <returns>The reply from the server.</returns>
         public async Task<RecMessage> TransactionAsync(SendMessage message) {
             if (!IsOpen) throw new NotOpenException();
             return await Task<RecMessage>.Run(() => Transaction(message));
         }
 
         /// <summary>
+        /// Carries out a Transaction() call asynchronously. Can only be called in Transaction mode.
+        /// </summary>
+        /// <typeparam name="T">The type of the message expected from the server.</typeparam>
+        /// <param name="message">The message to send to the server.</param>
+        /// <returns>The reply from the server.</returns>
+        public async Task<T> TransactionAsync<T>(SendMessage message) where T : RecMessage {
+            if (!IsOpen) throw new NotOpenException();
+            return await Task<T>.Run(() => Transaction<T>(message));
+        }
+
+        /// <summary>
         /// Sends a message to the server, and does not wait for a reply. Can be called only in Listening mode.
         /// </summary>
-        /// <param name="message"></param>
+        /// <param name="message">The message to send to the server.</param>
         public void SendMessage(SendMessage message) {
             if (_mode != Modes.Listening) throw new ClientModeException(false);
             if (!IsOpen) throw new NotOpenException();
@@ -377,6 +407,10 @@ namespace Babbacombe.SockLib {
             GC.SuppressFinalize(this);
         }
 
+        /// <summary>
+        /// Closes the connection to the server.
+        /// </summary>
+        /// <param name="disposing"></param>
         protected virtual void Dispose(bool disposing) {
             Close();
         }
@@ -411,6 +445,7 @@ namespace Babbacombe.SockLib {
     /// <summary>
     /// Thrown if a Transaction is called in Listening mode, or a bare message is sent in Transaction mode.
     /// </summary>
+    [Serializable]
     public class ClientModeException : ApplicationException {
         private ClientModeException() { }
 
@@ -421,6 +456,7 @@ namespace Babbacombe.SockLib {
     /// <summary>
     /// Thrown in Transaction mode if ExceptionOnStatus is true, and a status message is sent as the reply from the server.
     /// </summary>
+    [Serializable]
     public class StatusException : ApplicationException {
         private StatusException() { }
         public RecStatusMessage StatusMessage { get; private set; }
@@ -443,10 +479,14 @@ namespace Babbacombe.SockLib {
     /// <summary>
     /// Thrown on an attempt to use a client that is not open.
     /// </summary>
+    [Serializable]
     public class NotOpenException : ApplicationException {
-        public NotOpenException() : base("The SockLib client is not open") { }
+        internal NotOpenException() : base("The SockLib client is not open") { }
     }
 
+    /// <summary>
+    /// A list of the handlers defined for the client.
+    /// </summary>
     public class ClientHandlers {
         private class HandlerItem {
             public ClientHandler Handler { get; set; }
@@ -462,10 +502,21 @@ namespace Babbacombe.SockLib {
         }
         private Dictionary<string, HandlerItem> _handlers = new Dictionary<string, HandlerItem>();
 
+        /// <summary>
+        /// Adds a handler to the client.
+        /// </summary>
+        /// <param name="command">The command to handle.</param>
+        /// <param name="handler">The handler routine.</param>
         public void Add(string command, ClientHandler handler) {
             _handlers.Add(command, new HandlerItem { Handler = handler });
         }
 
+        /// <summary>
+        /// Adds a handler to the client.
+        /// </summary>
+        /// <typeparam name="T">The type of message expected from the server.</typeparam>
+        /// <param name="command">The command to handle.</param>
+        /// <param name="handler">The handler routine.</param>
         public void Add<T>(string command, ClientHandler<T> handler) where T : RecMessage {
             _handlers.Add(command, new HandlerItem<T> { Handler = handler });
         }
@@ -486,11 +537,18 @@ namespace Babbacombe.SockLib {
     /// <param name="message"></param>
     public delegate void ClientHandler(Client client, RecMessage message);
 
+    /// <summary>
+    /// The type of handers for messages sent from the server.
+    /// </summary>
+    /// <typeparam name="T">The type of message expected from the server for the command.</typeparam>
+    /// <param name="client"></param>
+    /// <param name="message"></param>
     public delegate void ClientHandler<T>(Client client, T message) where T : RecMessage;
 
     /// <summary>
     /// Thrown if the server closes while the client is open.
     /// </summary>
+    [Serializable]
     public class ServerClosedException : ApplicationException {
         public ServerClosedException() { }
     }

@@ -29,10 +29,37 @@ using System.Threading.Tasks;
 namespace Babbacombe.SockLib {
 
     /// <summary>
-    /// The types of messages that can be sent.
+    /// The types of messages that can be sent and received.
     /// </summary>
     public enum MessageTypes {
-        Text, Status, Unicode, Xml, Binary, Filenames, Multipart
+        /// <summary>
+        /// A message containing UTF-8 text
+        /// </summary>
+        Text, 
+        /// <summary>
+        /// A message containing a status
+        /// </summary>
+        Status, 
+        /// <summary>
+        /// A text message containing Unicode text
+        /// </summary>
+        Unicode, 
+        /// <summary>
+        /// A message containing an XML document
+        /// </summary>
+        Xml, 
+        /// <summary>
+        /// A message containing binary data
+        /// </summary>
+        Binary, 
+        /// <summary>
+        /// A message containing a list of Filenames
+        /// </summary>
+        Filenames, 
+        /// <summary>
+        /// A message containing multiple files and data items
+        /// </summary>
+        Multipart
     }
 
 }
