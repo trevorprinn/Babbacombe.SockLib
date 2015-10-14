@@ -25,7 +25,7 @@ namespace SockLibUnitTests {
                 client.Open();
                 Assert.IsTrue(client.IsOpen, "IsOpen");
 
-                Thread.Sleep(100);
+                Thread.Sleep(500);
                 Assert.AreEqual(1, server.Clients.Count());
 
                 var reply = client.Transaction(new SendTextMessage("Test", "abcde"));

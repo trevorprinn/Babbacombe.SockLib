@@ -35,22 +35,20 @@ namespace SockLibUnitTests {
             for (int i = 0; i < msgCnt; i++) _msgs.Add(new Msg(i + 1, rnd.Next(1000)));
             _msgs.Shuffle();
 
-            Handlers.Add("Test", handleMsg);
-            Handlers.Add("Ident", handleIdent);
+            Handlers.Add<RecTextMessage>("Test", handleMsg);
+            Handlers.Add<RecTextMessage>("Ident", handleIdent);
         }
 
         protected override ServerClient CreateClient() {
             return new TestServerClient();
         }
 
-        private SendMessage handleMsg(ServerClient c, RecMessage m) {
-            var msg = (RecTextMessage)m;
+        private SendMessage handleMsg(ServerClient c, RecTextMessage msg) {
             ((TestServerClient)c).RecMsgs.Add(Convert.ToInt32(msg.Text));
             return null;
         }
 
-        private SendMessage handleIdent(ServerClient c, RecMessage m) {
-            var msg = (RecTextMessage)m;
+        private SendMessage handleIdent(ServerClient c, RecTextMessage msg) {
             ((TestServerClient)c).Ident = Convert.ToInt32(msg.Text);
             return null;
         }

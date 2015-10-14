@@ -31,12 +31,11 @@ namespace SockLibUnitTests {
             for (int i = 0; i < msgCount; i++) _msgs.Add(new Msg(i + 1, rnd.Next(1000)));
             _msgs.Shuffle();
 
-            Handlers.Add("Test", handleMsg);
+            Handlers.Add<RecTextMessage>("Test", handleMsg);
         }
 
 
-        private void handleMsg(Client c, RecMessage m) {
-            var msg = (RecTextMessage)m;
+        private void handleMsg(Client c, RecTextMessage msg) {
             _recMsgs.Add(Convert.ToInt32(msg.Text));
         }
 

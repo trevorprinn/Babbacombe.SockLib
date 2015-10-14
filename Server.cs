@@ -170,7 +170,7 @@ namespace Babbacombe.SockLib {
                             // If there is more than one message waiting, the DelimitedStream
                             // may have buffered past the end of the first message. This overrun
                             // needs to be put back onto the beginning of the next stream.
-                            if (Handlers.ContainsKey(msg.Command)) {
+                            if (Handlers.HasHandler(msg.Command)) {
                                 // There's a handler for this command, so call it.
                                 reply = Handlers.Invoke(msg.Command, client, msg);
                             } else {
@@ -279,14 +279,12 @@ namespace Babbacombe.SockLib {
 
     public class ServerHandlers {
         private class HandlerItem {
-            public virtual bool IsGeneric { get { return false; } }
             public ServerHandler Handler { get; set; }
             public virtual SendMessage Invoke(ServerClient client, RecMessage message) {
                 return Handler.Invoke(client, message);
             }
         }
         private class HandlerItem<T> : HandlerItem where T : RecMessage {
-            public override bool IsGeneric { get { return true; } }
             public new ServerHandler<T> Handler { get; set; }
             public override SendMessage Invoke(ServerClient client, RecMessage message) {
                 return Handler.Invoke(client, (T)message);
@@ -294,18 +292,18 @@ namespace Babbacombe.SockLib {
         }
         private Dictionary<string, HandlerItem> _handlers = new Dictionary<string, HandlerItem>();
 
-        public void Add(string key, ServerHandler handler) {
-            _handlers.Add(key, new HandlerItem { Handler = handler });
+        public void Add(string command, ServerHandler handler) {
+            _handlers.Add(command, new HandlerItem { Handler = handler });
         }
 
-        public void Add<T>(string key, ServerHandler<T> handler) where T : RecMessage {
-            _handlers.Add(key, new HandlerItem<T> { Handler = handler });
+        public void Add<T>(string command, ServerHandler<T> handler) where T : RecMessage {
+            _handlers.Add(command, new HandlerItem<T> { Handler = handler });
         }
 
-        internal bool ContainsKey(string key) { return _handlers.ContainsKey(key); }
+        internal bool HasHandler(string command) { return _handlers.ContainsKey(command); }
 
-        internal SendMessage Invoke(string key, ServerClient client, RecMessage message) {
-            var item = _handlers[key];
+        internal SendMessage Invoke(string command, ServerClient client, RecMessage message) {
+            var item = _handlers[command];
             return item.Invoke(client, message);
         }
     }

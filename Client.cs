@@ -131,9 +131,9 @@ namespace Babbacombe.SockLib {
         public event EventHandler ServerClosed;
 
         /// <summary>
-        /// Gets and sets the handlers for messages received from the server (in either mode).
+        /// Gets the handlers for messages received from the server (in either mode).
         /// </summary>
-        public Dictionary<string, ClientHandler> Handlers = new Dictionary<string, ClientHandler>();
+        public ClientHandlers Handlers { get; private set; }
 
         /// <summary>
         /// Gets the last exception that occurred in an Open() call, or when the server shuts down in Listening mode.
@@ -168,6 +168,7 @@ namespace Babbacombe.SockLib {
         /// <param name="hostEp">The end point of the server.</param>
         /// <param name="mode">The mode to start the connection in. Defaults to Transaction.</param>
         public Client(IPEndPoint hostEp, Modes mode = Modes.Transaction) {
+            Handlers = new ClientHandlers();
             HostEp = hostEp;
             Mode = mode;
             _trans = Transaction;
@@ -386,9 +387,8 @@ namespace Babbacombe.SockLib {
         /// <param name="recMessage"></param>
         /// <returns>True if a handler has been set up for the command.</returns>
         public bool CallHandler(RecMessage recMessage) {
-            if (!Handlers.ContainsKey(recMessage.Command)) return false;
-            var handler = Handlers[recMessage.Command];
-            handler.Invoke(this, recMessage);
+            if (!Handlers.HasHandler(recMessage.Command)) return false;
+            Handlers.Invoke(recMessage.Command, this, recMessage);
             return true;
         }
 
@@ -447,6 +447,38 @@ namespace Babbacombe.SockLib {
         public NotOpenException() : base("The SockLib client is not open") { }
     }
 
+    public class ClientHandlers {
+        private class HandlerItem {
+            public ClientHandler Handler { get; set; }
+            public virtual void Invoke(Client client, RecMessage message) {
+                Handler.Invoke(client, message);
+            }
+        }
+        private class HandlerItem<T> : HandlerItem where T : RecMessage {
+            public new ClientHandler<T> Handler { get; set; }
+            public override void Invoke(Client client, RecMessage message) {
+                Handler.Invoke(client, (T)message);
+            }
+        }
+        private Dictionary<string, HandlerItem> _handlers = new Dictionary<string, HandlerItem>();
+
+        public void Add(string command, ClientHandler handler) {
+            _handlers.Add(command, new HandlerItem { Handler = handler });
+        }
+
+        public void Add<T>(string command, ClientHandler<T> handler) where T : RecMessage {
+            _handlers.Add(command, new HandlerItem<T> { Handler = handler });
+        }
+
+        internal bool HasHandler(string command) { return _handlers.ContainsKey(command); }
+
+        internal void Invoke(string command, Client client, RecMessage message) {
+            var item = _handlers[command];
+            item.Invoke(client, message);
+        }
+
+    }
+
     /// <summary>
     /// The type of handlers for messages sent from the server.
     /// </summary>
@@ -454,7 +486,8 @@ namespace Babbacombe.SockLib {
     /// <param name="message"></param>
     public delegate void ClientHandler(Client client, RecMessage message);
 
-    
+    public delegate void ClientHandler<T>(Client client, T message) where T : RecMessage;
+
     /// <summary>
     /// Thrown if the server closes while the client is open.
     /// </summary>
