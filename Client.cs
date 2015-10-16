@@ -57,6 +57,7 @@ namespace Babbacombe.SockLib {
         private Modes _mode = Modes.Transaction;
         private bool _stopListening;
         private NetworkStream _netStream;
+        private bool _busySending;
 
         /// <summary>
         /// Whether to raise an exception automatically when a Status message is received as the reply in a Transaction.
@@ -108,6 +109,8 @@ namespace Babbacombe.SockLib {
 
         private Func<SendMessage, RecMessage> _trans;
 
+        private ClientPingManager _pingManager;
+
         /// <summary>
         /// Arguments for the MessageReceived event.
         /// </summary>
@@ -129,6 +132,11 @@ namespace Babbacombe.SockLib {
         /// Raised in Listening mode if the server shuts down.
         /// </summary>
         public event EventHandler ServerClosed;
+
+        /// <summary>
+        /// Raised if pings are not answered.
+        /// </summary>
+        public event EventHandler ConnectionLost;
 
         /// <summary>
         /// Gets the handlers for messages received from the server (in either mode).
@@ -172,6 +180,7 @@ namespace Babbacombe.SockLib {
             HostEp = hostEp;
             Mode = mode;
             _trans = Transaction;
+            _pingManager = new ClientPingManager(this);
         }
 
         private static IPAddress getHostAddress(string host) {
@@ -228,6 +237,15 @@ namespace Babbacombe.SockLib {
         /// </summary>
         protected virtual void OnServerClosed() {
             if (ServerClosed != null) ServerClosed(this, EventArgs.Empty);
+        }
+
+        internal void PingTimedOut() {
+            Close();
+            OnConnectionLost();
+        }
+
+        protected virtual void OnConnectionLost() {
+            if (ConnectionLost != null) ConnectionLost(this, EventArgs.Empty);
         }
         
         /// <summary>
@@ -329,10 +347,17 @@ namespace Babbacombe.SockLib {
         /// </summary>
         /// <param name="message">The message to send to the server.</param>
         public void SendMessage(SendMessage message) {
-            if (_mode != Modes.Listening) throw new ClientModeException(false);
+            // Send a ping message regardless of the mode
+            if (_mode != Modes.Listening && !(message is SendPingMessage)) throw new ClientModeException(false);
             if (!IsOpen) throw new NotOpenException();
             lock (this) {
-                message.Send(_netStream);
+                _busySending = true;
+                try {
+                    message.Send(_netStream);
+                } finally {
+                    _pingManager.Reset();
+                    _busySending = false;
+                }
             }
         }
 
@@ -382,11 +407,17 @@ namespace Babbacombe.SockLib {
                                 break;
                             }
                             var msg = RecMessage.Create(header, clientStream);
-                            if (!CallHandler(msg)) {
+                            if (msg.Type == MessageTypes.Ping) {
+                                if (!((RecPingMessage)msg).IsReply) {
+                                    // Send a ping reply
+                                    SendMessage(new SendPingMessage(true));
+                                }
+                            } else if (!CallHandler(msg)) {
                                 OnMessageReceived(RecMessage.Create(header, clientStream));
                             }
                             overrun = clientStream.GetOverrun();
                         }
+                        _pingManager.Reset();
                     }
                 } while (!_stopListening);
             } catch (SocketClosedException ex) {
@@ -413,6 +444,7 @@ namespace Babbacombe.SockLib {
         /// <param name="disposing"></param>
         protected virtual void Dispose(bool disposing) {
             Close();
+            _pingManager.Dispose();
         }
 
         /// <summary>
@@ -440,6 +472,8 @@ namespace Babbacombe.SockLib {
                 return false;
             }
         }
+
+        internal bool Busy { get { return _busySending || ListenBusy; } }
     }
 
     /// <summary>

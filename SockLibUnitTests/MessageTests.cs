@@ -62,7 +62,7 @@ namespace SockLibUnitTests {
             var msg = new SendTextMessage("TextLines", "abcde\nfghij\nvwxyz");
             var reply = (RecTextMessage)transferMessage(msg);
             Assert.AreEqual("TextLines", reply.Command);
-            var lines = reply.Lines.ToArray();
+            var lines = reply.Lines;
             Assert.IsTrue(lines.Length == 3);
             Assert.AreEqual("abcde", lines[0]);
             Assert.AreEqual("fghij", lines[1]);

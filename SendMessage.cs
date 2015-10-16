@@ -79,6 +79,33 @@ namespace Babbacombe.SockLib {
         }
     }
 
+    internal class SendPingMessage : SendMessage {
+        protected override MessageTypes Type {
+            get { return MessageTypes.Ping; }
+        }
+
+        public SendPingMessage(bool reply) {
+            Command = reply ? "Reply" : "";
+        }
+
+        protected override void SendData(Stream stream) { }
+    }
+
+    internal class SendClientModeMessage : SendTextMessage {
+        protected override MessageTypes Type {
+            get { return MessageTypes.ClientMode; }
+        }
+
+        public SendClientModeMessage(bool listening, PingManager pm = null) {
+            Command = listening && pm != null ? "LY" : listening ? "LN" : "TN";
+            if (listening && pm != null) {
+                Text = string.Format("{0}\n{1}", pm.PingInterval, pm.PingTimeout);
+            }
+        }
+
+        protected override void SendData(Stream stream) { }
+    }
+
     public class SendTextMessage : SendMessage {
         public string Text { get; set; }
 

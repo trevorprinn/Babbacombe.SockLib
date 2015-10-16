@@ -59,7 +59,14 @@ namespace Babbacombe.SockLib {
         /// <summary>
         /// A message containing multiple files and data items
         /// </summary>
-        Multipart
+        Multipart,
+        /// <summary>
+        /// For internal use only
+        /// </summary>
+        Ping,
+        /// <summary>
+        /// For internal use only
+        /// </summary>
+        ClientMode
     }
-
 }

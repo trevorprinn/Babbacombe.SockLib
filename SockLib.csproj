@@ -45,6 +45,7 @@
     <Compile Include="DiscoverClient.cs" />
     <Compile Include="DiscoverServer.cs" />
     <Compile Include="Extensions.cs" />
+    <Compile Include="PingManager.cs" />
     <Compile Include="RecMessage.cs" />
     <Compile Include="RecMessageHeader.cs" />
     <Compile Include="MessageTypes.cs" />

@@ -57,6 +57,8 @@ namespace Babbacombe.SockLib {
                 case MessageTypes.Binary: return new RecBinaryMessage(header, stream);
                 case MessageTypes.Filenames: return new RecFilenamesMessage(header, stream);
                 case MessageTypes.Multipart: return new RecMultipartMessage(header, stream);
+                case MessageTypes.Ping: return new RecPingMessage(header, stream);
+                case MessageTypes.ClientMode: return new RecClientModeMessage(header, stream);
                 default: throw new ApplicationException("Unknown message type received");
             }
         }
@@ -65,7 +67,36 @@ namespace Babbacombe.SockLib {
 
         public string Id { get { return Header.Id; } }
 
-        public MessageTypes Type { get { return Header.Type;}}
+        public MessageTypes Type { get { return Header.Type; } }
+
+        /// <summary>
+        /// Reads to the end of the stream (assumes there is not much data)
+        /// </summary>
+        protected void ReadToEnd() {
+            while (Stream.Read(new byte[10], 0, 10) > 0) { }
+        }
+    }
+
+    internal class RecPingMessage : RecMessage {
+        internal RecPingMessage(RecMessageHeader header, Stream stream) : base(header, stream) {
+            ReadToEnd();
+        }
+
+        public bool IsReply { get { return Command == "Reply"; } }
+    }
+
+    internal class RecClientModeMessage : RecTextMessage {
+        internal RecClientModeMessage(RecMessageHeader header, Stream stream)
+            : base(header, stream) {
+        }
+
+        public bool IsListening { get { return Command[0] == 'L'; } }
+
+        public bool SendPings { get { return Command[1] == 'Y'; } }
+
+        public int PingInterval { get { return SendPings ? Convert.ToInt32(Lines[0]) : 0; } }
+
+        public int PingTimeout { get { return SendPings ? Convert.ToInt32(Lines[1]) : 0; } }
     }
 
     public class RecTextMessage : RecMessage {
@@ -84,8 +115,8 @@ namespace Babbacombe.SockLib {
 
         public string Text { get { return this.Encoding.GetString(_data.ToArray()); } }
 
-        public IEnumerable<string> Lines {
-            get { return Text.Split('\n').Select(f => f.TrimEnd('\r')); }
+        public string[] Lines {
+            get { return Text.Split('\n').Select(f => f.TrimEnd('\r')).ToArray(); }
         }
 
         protected virtual Encoding Encoding { get { return Encoding.UTF8; } }
