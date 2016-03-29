@@ -188,7 +188,7 @@ namespace Babbacombe.SockLib {
                         RecMessageHeader header;
                         SendMessage reply = null;
                         using (var recStream = new DelimitedStream(client.Client.GetStream(), overrun)) {
-							if (recStream.Delimiter == null) break;
+                            if (recStream.Delimiter == null) break;
                             // Wait until a message is received.
                             header = new RecMessageHeader(recStream);
                             if (header.IsEmpty) break; // The stream has ended so the client is disconnected.
@@ -216,6 +216,8 @@ namespace Babbacombe.SockLib {
                             client.SendMessage(reply);
                         }
                     } while (true);
+                } catch (SocketClosedException) { 
+                    // The client has disconnected
                 } finally {
                     lock (_clients) {
                         _clients.Remove(client);
