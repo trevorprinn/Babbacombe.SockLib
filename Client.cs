@@ -58,6 +58,13 @@ namespace Babbacombe.SockLib {
         private bool _stopListening;
         private NetworkStream _netStream;
 
+        private static readonly Lazy<bool> isRunningOnMonoValue = new Lazy<bool>(() =>
+        {
+            return Type.GetType("Mono.Runtime") != null;
+        });
+
+        private static bool isRunningOnMono => isRunningOnMonoValue.Value;
+
         /// <summary>
         /// Whether to raise an exception automatically when a Status message is received as the reply in a Transaction.
         /// Defaults to False.
@@ -432,6 +439,7 @@ namespace Babbacombe.SockLib {
         public bool IsOpen {
             get {
                 if (_client == null) return false;
+                if (isRunningOnMono) return _client.Connected;
                 var state = IPGlobalProperties.GetIPGlobalProperties()
                     .GetActiveTcpConnections()
                     .SingleOrDefault(x => x.LocalEndPoint.Equals(_client.Client.LocalEndPoint));
