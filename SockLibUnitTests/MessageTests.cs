@@ -35,13 +35,13 @@ namespace SockLibUnitTests {
 
         private void testTextMessage(string cmd, string text) {
             var msg = new SendTextMessage(cmd, text);
-            var reply = (RecTextMessage)transferMessage(msg);
+            var reply = (RecTextMessage)TransferMessage(msg);
             Assert.AreEqual(cmd, reply.Command);
             Assert.AreEqual(text, reply.Text);
             reply.Stream.Dispose();
         }
 
-        private RecMessage transferMessage(SendMessage msg, bool useFile = false) {
+        public static RecMessage TransferMessage(SendMessage msg, bool useFile = false) {
             Stream s;
             if (useFile) {
                 var name = Path.GetTempFileName();
@@ -60,7 +60,7 @@ namespace SockLibUnitTests {
         [TestMethod]
         public void TextLinesMessage() {
             var msg = new SendTextMessage("TextLines", "abcde\nfghij\nvwxyz");
-            var reply = (RecTextMessage)transferMessage(msg);
+            var reply = (RecTextMessage)TransferMessage(msg);
             Assert.AreEqual("TextLines", reply.Command);
             var lines = reply.Lines.ToArray();
             Assert.IsTrue(lines.Length == 3);
@@ -74,7 +74,7 @@ namespace SockLibUnitTests {
             byte[] bin = new byte[1000000];
             new Random().NextBytes(bin);
             var msg = new SendBinaryMessage("TestBin", bin);
-            var reply = (RecBinaryMessage)transferMessage(msg);
+            var reply = (RecBinaryMessage)TransferMessage(msg);
             Assert.IsFalse(bin.Zip(reply.Data, (sb, rp) => sb == rp).Any(r => false));
             reply.Stream.Dispose();
         }
@@ -84,7 +84,7 @@ namespace SockLibUnitTests {
             using (var f = new RandomFile(10.Megs())) 
             using (var fs = f.GetStream()) {
                 var msg = new SendBinaryMessage("TestBinStream", fs);
-                var reply = (RecBinaryMessage)transferMessage(msg);
+                var reply = (RecBinaryMessage)TransferMessage(msg);
                 Assert.IsTrue(f.IsEqual(reply.Stream));
                 reply.Stream.Dispose();
             }
@@ -92,7 +92,7 @@ namespace SockLibUnitTests {
             using (var f = new RandomFile(10.Megs(), "\r\n"))
             using (var fs = f.GetStream()) {
                 var msg = new SendBinaryMessage("TestBinStream", fs);
-                var reply = (RecBinaryMessage)transferMessage(msg);
+                var reply = (RecBinaryMessage)TransferMessage(msg);
                 Assert.IsTrue(f.IsEqual(reply.Stream), "With \\r\\n at end");
                 reply.Stream.Dispose();
             }
@@ -102,7 +102,7 @@ namespace SockLibUnitTests {
         public void FilenamesMessage() {
             var names = Enumerable.Range(1, 150).Select(i => Path.GetRandomFileName()).Concat(Enumerable.Range(1, 150).Select(i => Path.GetRandomFileName()));
             var msg = new SendFilenamesMessage("TestFilenames", names);
-            var reply = (RecFilenamesMessage)transferMessage(msg);
+            var reply = (RecFilenamesMessage)TransferMessage(msg);
             Assert.IsTrue(names.Count() == reply.Filenames.Count());
             Assert.IsFalse(names.Zip(reply.Filenames, (sn, rn) => sn == rn).Any(r => false));
         }
@@ -119,7 +119,7 @@ namespace SockLibUnitTests {
             List<SendMultipartMessage.BaseItem> items = new List<SendMultipartMessage.BaseItem>(files.Select(f => new SendMultipartMessage.FileItem(f.Name)));
             foreach (var bin in bins) items.Insert(r.Next(items.Count + 1), new SendMultipartMessage.BinaryItem(bin.Name, bin.Data));
             var msg = new SendMultipartMessage("TestMp", items);
-            var reply = (RecMultipartMessage)transferMessage(msg, true);
+            var reply = (RecMultipartMessage)TransferMessage(msg, true);
             var man = new MultipartManager(reply.Stream);
             int fcount = 0;
             int bcount = 0;
@@ -159,7 +159,7 @@ namespace SockLibUnitTests {
             msg.GetItemStream += (sender, e) => {
                 e.Stream = file.GetStream();
             };
-            var recMsg = (RecMultipartMessage)transferMessage(msg, true);
+            var recMsg = (RecMultipartMessage)TransferMessage(msg, true);
             recMsg.Manager.FileUploaded += (sender, e) => {
                 Assert.IsTrue(file.IsEqual(e.Contents));
             };

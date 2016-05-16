@@ -48,6 +48,9 @@
     <Reference Include="System.Xml.Linq" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="..\CustomMessageTable.cs">
+      <Link>CustomMessageTable.cs</Link>
+    </Compile>
     <Compile Include="Resources\Resource.designer.cs" />
     <Compile Include="..\Client.cs">
       <Link>Client.cs</Link>
@@ -63,9 +66,6 @@
     </Compile>
     <Compile Include="..\Extensions.cs">
       <Link>Extensions.cs</Link>
-    </Compile>
-    <Compile Include="..\MessageTypes.cs">
-      <Link>MessageTypes.cs</Link>
     </Compile>
     <Compile Include="..\MultipartManager.cs">
       <Link>MultipartManager.cs</Link>

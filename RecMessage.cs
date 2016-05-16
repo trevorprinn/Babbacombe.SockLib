@@ -39,25 +39,30 @@ namespace Babbacombe.SockLib {
 
         private RecMessage() { }
 
-        internal RecMessage(RecMessageHeader header, Stream stream) {
+        public RecMessage(RecMessageHeader header, Stream stream) {
             Header = header;
             Stream = stream;
         }
+
+        public static CustomMessageTable CustomMessages { get; } = new CustomMessageTable();
 
 #if TEST
         public static RecMessage Create(RecMessageHeader header, Stream stream) {
 #else
         internal static RecMessage Create(RecMessageHeader header, Stream stream) {
 #endif
-            switch (header.Type) {
-                case MessageTypes.Text: return new RecTextMessage(header, stream);
-                case MessageTypes.Status: return new RecStatusMessage(header, stream);
-                case MessageTypes.Unicode: return new RecUnicodeMessage(header, stream);
-                case MessageTypes.Xml: return new RecXmlMessage(header, stream);
-                case MessageTypes.Binary: return new RecBinaryMessage(header, stream);
-                case MessageTypes.Filenames: return new RecFilenamesMessage(header, stream);
-                case MessageTypes.Multipart: return new RecMultipartMessage(header, stream);
-                default: throw new ApplicationException("Unknown message type received");
+            switch (header.MessageType) {
+                case 'T': return new RecTextMessage(header, stream);
+                case 'S': return new RecStatusMessage(header, stream);
+                case 'U': return new RecUnicodeMessage(header, stream);
+                case 'X': return new RecXmlMessage(header, stream);
+                case 'B': return new RecBinaryMessage(header, stream);
+                case 'F': return new RecFilenamesMessage(header, stream);
+                case 'M': return new RecMultipartMessage(header, stream);
+                default:
+                    var custom = CustomMessages.getMessage(header, stream);
+                    if (custom == null) throw new ApplicationException($"Unknown message type '{header.MessageType}' received");
+                    return custom;                    
             }
         }
 
@@ -65,7 +70,7 @@ namespace Babbacombe.SockLib {
 
         public string Id { get { return Header.Id; } }
 
-        public MessageTypes Type { get { return Header.Type;}}
+        public char MessageType { get { return Header.MessageType;}}
     }
 
     public class RecTextMessage : RecMessage {

@@ -31,7 +31,7 @@ using System.Xml.Linq;
 
 namespace Babbacombe.SockLib {
     public abstract class SendMessage {
-        protected abstract MessageTypes Type { get; }
+        protected abstract char MessageType { get; }
         public virtual string Command { get; set; }
         public string Id { get; set; }
 
@@ -50,7 +50,7 @@ namespace Babbacombe.SockLib {
                 stream.Write(delim, 0, delim.Length);
                 stream.WriteByte((byte)'\n');
 
-                var type = (byte)Type.ToString()[0];
+                var type = (byte)MessageType.ToString()[0];
                 stream.WriteByte(type);
 
                 if (!string.IsNullOrWhiteSpace(Id)) {
@@ -82,8 +82,8 @@ namespace Babbacombe.SockLib {
     public class SendTextMessage : SendMessage {
         public string Text { get; set; }
 
-        protected override MessageTypes Type {
-            get { return MessageTypes.Text; }
+        protected override char MessageType {
+            get { return 'T'; }
         }
 
         public SendTextMessage() { }
@@ -113,8 +113,8 @@ namespace Babbacombe.SockLib {
         public string Status { get; set; }
         public string Description { get; set; }
 
-        protected override MessageTypes Type {
-            get { return MessageTypes.Status; }
+        protected override char MessageType {
+            get { return 'S'; }
         }
 
         public SendStatusMessage(string status, string description = null, string text = null) {
@@ -134,8 +134,8 @@ namespace Babbacombe.SockLib {
     }
 
     public class SendUnicodeMessage : SendTextMessage {
-        protected override MessageTypes Type {
-            get { return MessageTypes.Unicode; }
+        protected override char MessageType {
+            get { return 'U'; }
         }
 
         public SendUnicodeMessage() { }
@@ -151,8 +151,8 @@ namespace Babbacombe.SockLib {
     public class SendXmlMessage : SendTextMessage {
         private XDocument _document;
 
-        protected override MessageTypes Type {
-            get { return MessageTypes.Xml; }
+        protected override char MessageType {
+            get { return 'X'; }
         }
 
         public SendXmlMessage() { }
@@ -175,8 +175,8 @@ namespace Babbacombe.SockLib {
         public byte[] Data { get; set; }
         public Stream Stream { get; set; }
 
-        protected override MessageTypes Type {
-            get { return MessageTypes.Binary; }
+        protected override char MessageType {
+            get { return 'B'; }
         }
 
         public SendBinaryMessage() { }
@@ -209,8 +209,8 @@ namespace Babbacombe.SockLib {
     public class SendFilenamesMessage : SendTextMessage {
         private List<string> _filenames = new List<string>();
 
-        protected override MessageTypes Type {
-            get { return MessageTypes.Filenames; }
+        protected override char MessageType {
+            get { return 'F'; }
         }
 
         public SendFilenamesMessage() { }
@@ -260,8 +260,8 @@ namespace Babbacombe.SockLib {
         }
         public event EventHandler<GetItemStreamEventArgs> GetItemStream;
 
-        protected override MessageTypes Type {
-            get { return MessageTypes.Multipart; }
+        protected override char MessageType {
+            get { return 'M'; }
         }
 
         public SendMultipartMessage() { }

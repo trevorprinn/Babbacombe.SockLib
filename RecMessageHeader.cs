@@ -30,7 +30,7 @@ using System.Threading.Tasks;
 namespace Babbacombe.SockLib {
 
     public sealed class RecMessageHeader {
-        public MessageTypes Type { get; private set; }
+        public char MessageType { get; private set; }
         public string Id { get; private set; }
         public string Command { get; private set; }
         public bool IsEmpty { get; private set; }
@@ -48,7 +48,7 @@ namespace Babbacombe.SockLib {
 			} catch (IOException) { }
             IsEmpty = string.IsNullOrEmpty(line1);
             if (IsEmpty) return;
-            Type = getMessageType(line1[0]);
+            MessageType = line1[0];
             if (line1.Length > 1) Id = line1.Substring(1);
             Command = readLine(stream);
         }
@@ -63,11 +63,6 @@ namespace Babbacombe.SockLib {
             if (ch < 0) return null;
             while (line.Length > 0 && line[line.Length - 1] == '\r') line.Length--;
             return line.ToString();
-        }
-
-        private MessageTypes getMessageType(char t) {
-            if (!"TSUXBFM".Contains(t)) throw new UnknownMessageTypeException(t);
-            return ((MessageTypes[])Enum.GetValues(typeof(MessageTypes))).Single(mt => mt.ToString()[0] == t);
         }
     }
 }

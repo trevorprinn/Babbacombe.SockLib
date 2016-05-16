@@ -59,6 +59,7 @@
     <Compile Include="RandomFile.cs" />
     <Compile Include="TestListenClient.cs" />
     <Compile Include="TestListenServer.cs" />
+    <Compile Include="ZipMessageTests.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\SockLib.csproj">
