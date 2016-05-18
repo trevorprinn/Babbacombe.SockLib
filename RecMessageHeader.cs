@@ -29,11 +29,27 @@ using System.Threading.Tasks;
 
 namespace Babbacombe.SockLib {
 
+    /// <summary>
+    /// The header of a received message.
+    /// </summary>
     public sealed class RecMessageHeader {
-        public char MessageType { get; private set; }
-        public string Id { get; private set; }
-        public string Command { get; private set; }
-        public bool IsEmpty { get; private set; }
+        /// <summary>
+        /// Gets the message type identifier.
+        /// </summary>
+        public char MessageType { get; }
+        /// <summary>
+        /// Gets the Id sent in the message.
+        /// </summary>
+        public string Id { get; }
+        /// <summary>
+        /// Gets the Command sent in the message.
+        /// </summary>
+        public string Command { get; }
+        /// <summary>
+        /// True if no message has been received. This either signals the end of a data stream
+        /// or means that the other end has disconnected.
+        /// </summary>
+        internal bool IsEmpty { get; }
         
         private RecMessageHeader() { }
 

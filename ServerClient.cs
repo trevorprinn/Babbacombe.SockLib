@@ -30,21 +30,48 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace Babbacombe.SockLib {
+
+    /// <summary>
+    /// Manages the server end of a connection for one client. Stored in the Server's Clients collection.
+    /// Derived classes can be created to store information against the client if required, in which case
+    /// the Server's CreateClient method should be overridden to create them.
+    /// </summary>
     public class ServerClient : IDisposable {
+
+        /// <summary>
+        /// Gets the server that the client is connected to.
+        /// </summary>
         public Server Server { get; internal set; }
+
+        /// <summary>
+        /// Gets the underlying socket object.
+        /// </summary>
         protected internal TcpClient Client { get; internal set; }
 
+        /// <summary>
+        /// Raised when the ServerClient object has been created and connected to the server, just before it
+        /// is added to the Server's Clients collection.
+        /// </summary>
         public event EventHandler Created;
 
+        /// <summary>
+        /// Raises the Created event.
+        /// </summary>
         protected internal virtual void OnCreated() {
-            if (Created != null) Created(this, EventArgs.Empty);
+            Created?.Invoke(this, EventArgs.Empty);
         }
 
+        /// <summary>
+        /// Shuts down any remaining connection to the client app, and closes the socket.
+        /// </summary>
         public void Dispose() {
             Dispose(true);
             GC.SuppressFinalize(this);
         }
 
+        /// <summary>
+        /// Shuts down any remaining connection to the client app, and closes the socket.
+        /// </summary>
         protected virtual void Dispose(bool disposing) {
             if (Client != null) {
                 if (Client.Connected) Client.GetStream().Dispose();
@@ -53,6 +80,10 @@ namespace Babbacombe.SockLib {
             }
         }
 
+        /// <summary>
+        /// Sends a message to the client app.
+        /// </summary>
+        /// <param name="message"></param>
         public void SendMessage(SendMessage message) {
             lock (this) {
                 message.Send(Client.GetStream());

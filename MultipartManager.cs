@@ -37,6 +37,11 @@ namespace Babbacombe.SockLib {
     /// For each set of binary sent, a BinaryUploaded event is raised, and for each other data item
     /// a DataReceived event is raised.
     /// </summary>
+    /// <remarks>
+    /// A class can be derived from MultipartManager to avoid using the events, and respond using
+    /// On... methods instead. The RecMultipartMessage.Manager property should be set to an instance
+    /// of that class in that case.
+    /// </remarks>
     public class MultipartManager {
         private List<DataItem> _dataItems = new List<DataItem>();
         private Stream _stream;

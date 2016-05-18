@@ -2,8 +2,6 @@
 
 A client/server socket library that manages messages in a variety of formats, including text, binary and multiple file uploads and downloads.
 
-This library is currently Work In Progress, and the API is subject to change. The wiki and the internal documentation are not yet complete.
-
 In some ways, SockLib is similar to a web server used as an application server, but has several advantages. Its main obvious disadvantage is that it uses its own protocol, can be used only through its own API, and cannot interact with a web browser.
 
 The advantages are:

@@ -93,6 +93,9 @@ namespace Babbacombe.SockLib {
 			System.Diagnostics.Debug.WriteLine("Server stopped");
 		}
 
+        /// <summary>
+        /// Shuts down the server and stops broadcasting.
+        /// </summary>
 		protected virtual void Dispose(bool disposing) {
 			if (disposing) {
 				_cancel.Cancel();
@@ -101,6 +104,9 @@ namespace Babbacombe.SockLib {
 			}
 		}
 
+        /// <summary>
+        /// Shuts down the server and stops broadcasting.
+        /// </summary>
         public void Dispose() {
 			Dispose(true);
 			GC.SuppressFinalize(this);

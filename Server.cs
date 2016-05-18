@@ -291,6 +291,10 @@ namespace Babbacombe.SockLib {
             GC.SuppressFinalize(this);
         }
 
+        /// <summary>
+        /// Shuts down the server.
+        /// </summary>
+        /// <param name="disposing"></param>
         protected virtual void Dispose(bool disposing) {
             if (_listenThread != null) {
                 _stop = true;

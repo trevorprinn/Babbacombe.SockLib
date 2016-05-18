@@ -457,6 +457,10 @@ namespace Babbacombe.SockLib {
     public class ClientModeException : ApplicationException {
         private ClientModeException() { }
 
+        /// <summary>
+        /// Constructs a ClientModeException
+        /// </summary>
+        /// <param name="inListeningMode"></param>
         public ClientModeException(bool inListeningMode)
             : base(inListeningMode ? "Cannot run a transaction while in Listening mode" : "Cannot send a bare message in Transaction mode") { }
     }
@@ -467,21 +471,26 @@ namespace Babbacombe.SockLib {
     [Serializable]
     public class StatusException : ApplicationException {
         private StatusException() { }
-        public RecStatusMessage StatusMessage { get; private set; }
+        
+        /// <summary>
+        /// The status message sent by the server
+        /// </summary>
+        public RecStatusMessage StatusMessage { get; }
 
-        public StatusException(RecStatusMessage statusMessage) {
+        internal StatusException(RecStatusMessage statusMessage) {
             StatusMessage = statusMessage;
         }
 
-        public override string Message {
-            get {
-                return StatusMessage.StatusMessage;
-            }
-        }
+        /// <summary>
+        /// The text of the status message sent by the server.
+        /// </summary>
+        public override string Message => StatusMessage.StatusMessage;
 
-        public override string ToString() {
-            return string.Format("{0} {1}", StatusMessage.Status, base.ToString());
-        }
+        /// <summary>
+        /// The text of the status message followed by the full exception.
+        /// </summary>
+        /// <returns></returns>
+        public override string ToString() => string.Format("{0} {1}", StatusMessage.Status, base.ToString());
     }
 
     /// <summary>
@@ -558,6 +567,9 @@ namespace Babbacombe.SockLib {
     /// </summary>
     [Serializable]
     public class ServerClosedException : ApplicationException {
+        /// <summary>
+        /// Creates a Server Closed Exception.
+        /// </summary>
         public ServerClosedException() { }
     }
 }
