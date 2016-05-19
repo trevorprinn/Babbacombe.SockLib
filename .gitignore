@@ -4,3 +4,5 @@ obj
 /TestResults
 *.userprefs
 *.nupkg
+packages
+TestResults
