@@ -3,12 +3,20 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+#if DEVICE
+using NUnit.Framework;
+#else
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+#endif
 
 using Babbacombe.SockLib;
 
 namespace SockLibUnitTests {
+#if DEVICE
+    [TestFixture]
+#else
     [TestClass]
+#endif
     public class MessageTests {
         private class TransFile {
             private Stream _stream;
@@ -24,7 +32,11 @@ namespace SockLibUnitTests {
         }
         private static List<TransFile> _tempFiles = new List<TransFile>();
 
+#if DEVICE
+        [Test]
+#else
         [TestMethod]
+#endif
         public void TextMessage() {
             testTextMessage("TestText", "abcdefg\r\nxyz");
             testTextMessage("qwerty", "abc\r\n");
@@ -57,7 +69,11 @@ namespace SockLibUnitTests {
             return RecMessage.Create(header, ds);
         }
 
+#if DEVICE
+        [Test]
+#else
         [TestMethod]
+#endif
         public void TextLinesMessage() {
             var msg = new SendTextMessage("TextLines", "abcde\nfghij\nvwxyz");
             var reply = (RecTextMessage)TransferMessage(msg);
@@ -69,9 +85,20 @@ namespace SockLibUnitTests {
             Assert.AreEqual("vwxyz", lines[2]);
         }
 
+        private bool isDevice
+#if DEVICE
+            => true;
+#else
+            => false;
+#endif
+
+#if DEVICE
+        [Test]
+#else
         [TestMethod]
+#endif
         public void BinaryMessage() {
-            byte[] bin = new byte[1000000];
+            byte[] bin = new byte[isDevice ? 10000 : 1000000];
             new Random().NextBytes(bin);
             var msg = new SendBinaryMessage("TestBin", bin);
             var reply = (RecBinaryMessage)TransferMessage(msg);
@@ -79,9 +106,13 @@ namespace SockLibUnitTests {
             reply.Stream.Dispose();
         }
 
+#if DEVICE
+        [Test]
+#else
         [TestMethod]
+#endif
         public void BinaryMessageStream() {
-            using (var f = new RandomFile(10.Megs())) 
+            using (var f = new RandomFile(isDevice ? 1.Megs() : 10.Megs())) 
             using (var fs = f.GetStream()) {
                 var msg = new SendBinaryMessage("TestBinStream", fs);
                 var reply = (RecBinaryMessage)TransferMessage(msg);
@@ -98,7 +129,11 @@ namespace SockLibUnitTests {
             }
         }
 
+#if DEVICE
+        [Test]
+#else
         [TestMethod]
+#endif
         public void FilenamesMessage() {
             var names = Enumerable.Range(1, 150).Select(i => Path.GetRandomFileName()).Concat(Enumerable.Range(1, 150).Select(i => Path.GetRandomFileName()));
             var msg = new SendFilenamesMessage("TestFilenames", names);
@@ -107,12 +142,16 @@ namespace SockLibUnitTests {
             Assert.IsFalse(names.Zip(reply.Filenames, (sn, rn) => sn == rn).Any(r => false));
         }
 
+#if DEVICE
+        [Test]
+#else
         [TestMethod]
+#endif
         public void MultipartMessage() {
             var r = new Random();
-            var files = Enumerable.Range(1, 10).Select(i => new RandomFile(r.Next(50.Megs()), i % 2 == 0 ? "\r\n" : null)).ToArray();
+            var files = Enumerable.Range(1, 10).Select(i => new RandomFile(r.Next(isDevice ? 1.Megs() : 50.Megs()), i % 2 == 0 ? "\r\n" : null)).ToArray();
             var bins = Enumerable.Range(1, 5).Select(i => {
-                var buf = new byte[r.Next(10.Megs())];
+                var buf = new byte[r.Next(isDevice ? 1.Megs() : 10.Megs())];
                 r.NextBytes(buf);
                 return new { Name = Path.GetRandomFileName(), Data = buf };
             }).ToArray();
@@ -126,7 +165,7 @@ namespace SockLibUnitTests {
             man.BinaryUploaded += (s, e) => {
                 var bin = bins.Single(b => b.Name == e.Info.Name);
                 var pos = 0;
-                int buflen = 1.Megs();
+                int buflen = isDevice ? 1.Megs() / 10 : 1.Megs();
                 var buf = new byte[buflen];
                 int rcount;
                 do {
@@ -150,9 +189,13 @@ namespace SockLibUnitTests {
             cleanUp();
         }
 
+#if DEVICE
+        [Test]
+#else
         [TestMethod]
+#endif
         public void MultipartStream() {
-            var file = new RandomFile(10.Megs());
+            var file = new RandomFile(isDevice ? 1.Megs() : 10.Megs());
             var item = new SendMultipartMessage.FileItem("abc.dat");
             var msg = new SendMultipartMessage("");
             msg.Items.Add(item);

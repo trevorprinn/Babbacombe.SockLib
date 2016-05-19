@@ -23,7 +23,7 @@
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
     <OutputPath>bin\Debug</OutputPath>
-    <DefineConstants>DEBUG;</DefineConstants>
+    <DefineConstants>DEBUG;TEST;ANDROID</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <ConsolePause>false</ConsolePause>
@@ -38,6 +38,7 @@
     <ConsolePause>false</ConsolePause>
     <AndroidUseSharedRuntime>false</AndroidUseSharedRuntime>
     <RunCodeAnalysis>false</RunCodeAnalysis>
+    <DefineConstants>ANDROID</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
@@ -51,6 +52,7 @@
     <Compile Include="..\CustomMessageTable.cs">
       <Link>CustomMessageTable.cs</Link>
     </Compile>
+    <Compile Include="IPGlobalProperties.cs" />
     <Compile Include="Resources\Resource.designer.cs" />
     <Compile Include="..\Client.cs">
       <Link>Client.cs</Link>

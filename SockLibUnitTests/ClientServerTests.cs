@@ -4,18 +4,37 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+#if DEVICE
+using NUnit.Framework;
+#else
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+#endif
 
 using Babbacombe.SockLib;
 
 namespace SockLibUnitTests {
+#if DEVICE
+    [TestFixture]
+#else
     [TestClass]
+#endif
     public class ClientServerTests {
+
+        private bool isDevice
+#if DEVICE
+            => true;
+#else
+            => false;
+#endif
 
         /// <summary>
         /// Test a single transaction works with a single client.
         /// </summary>
+#if DEVICE
+        [Test]
+#else
         [TestMethod]
+#endif
         public void OneTextTransaction() {
             using (Server server = new Server(9000)) 
             using (Client client = new Client("localhost", 9000)) {
@@ -29,7 +48,11 @@ namespace SockLibUnitTests {
                 Assert.AreEqual(1, server.Clients.Count());
 
                 var reply = client.Transaction(new SendTextMessage("Test", "abcde"));
+#if DEVICE
+                Assert.That(reply, Is.InstanceOf<RecTextMessage>());
+#else
                 Assert.IsInstanceOfType(reply, typeof(RecTextMessage));
+#endif
                 Assert.AreEqual("Test", reply.Command);
                 Assert.AreEqual("abcde", ((RecTextMessage)reply).Text);
 
@@ -42,7 +65,11 @@ namespace SockLibUnitTests {
         }
 
         private SendMessage echoText(ServerClient c, RecTextMessage r) {
+#if DEVICE
+            Assert.That(r, Is.InstanceOf<RecTextMessage>());
+#else
             Assert.IsInstanceOfType(r, typeof(RecTextMessage));
+#endif
 
             return new SendTextMessage(r.Command, r.Text);
         }
@@ -50,10 +77,20 @@ namespace SockLibUnitTests {
         /// <summary>
         /// Tests multiple clients sending multiple transactions get back the correct replies.
         /// </summary>
+#if DEVICE
+        [Test]
+#else
         [TestMethod]
+#endif
+        [Timeout(60000)]
         public void MultipleClientTextTransactions() {
+#if DEVICE
+            const int clientCount = 5;
+            const int transCount = 5;
+#else
             const int clientCount = 25;
             const int transCount = 25;
+#endif
             using (Server server = new Server(9000)) {
                 server.Handlers.Add<RecTextMessage>("Test", echoText);
 
@@ -78,7 +115,11 @@ namespace SockLibUnitTests {
         /// <summary>
         /// Tests that the client is closed when the server closes.
         /// </summary>
+#if DEVICE
+        [Test]
+#else
         [TestMethod]
+#endif
         public void CloseServer() {
             Client client;
             using (Server server = new Server(9000)) {
@@ -95,7 +136,11 @@ namespace SockLibUnitTests {
         /// <summary>
         /// Tests a server can send a delayed response to a message from a client.
         /// </summary>
+#if DEVICE
+        [Test]
+#else
         [TestMethod]
+#endif
         public void SimpleListen() {
             using (Server server = new Server(9000))
             using (Client client = new Client("localhost", 9000, Client.Modes.Listening)) {
@@ -113,7 +158,11 @@ namespace SockLibUnitTests {
             }
         }
 
+#if DEVICE
+        [Test]
+#else
         [TestMethod]
+#endif
         public void CloseClient() {
             using (Server server = new Server(9000)) {
                 server.Handlers.Add<RecTextMessage>("Test", echoTextDelayed);
@@ -140,11 +189,22 @@ namespace SockLibUnitTests {
         /// client to the server, and tests that the correct numbers have been received by each in the
         /// correct order.
         /// </summary>
+#if DEVICE
+        [Test]
+#else
         [TestMethod]
+#endif
+        [Timeout(120000)]
         public async Task Listening() {
+#if DEVICE
+            const int clientCount = 3;
+            const int serverMsgCount = 5;
+            const int clientMsgCount = 5;
+#else
             const int clientCount = 5;
             const int serverMsgCount = 50;
             const int clientMsgCount = 50;
+#endif
 
             var clients = new List<TestListenClient>();
             using (var server = new TestListenServer(serverMsgCount)) {
@@ -185,9 +245,14 @@ namespace SockLibUnitTests {
             }
         }
 
+#if DEVICE
+        [Test]
+#else
         [TestMethod]
+#endif
         public void TransferFiles() {
-            var sendFiles = new List<RandomFile>(Enumerable.Range(1, 10).Select(i => new RandomFile(5.Megs())));
+            var sendFiles = new List<RandomFile>(Enumerable.Range(1, isDevice ? 5 : 10)
+                .Select(i => new RandomFile(isDevice ? 1.Megs() : 5.Megs())));
             var recFiles = new List<string>();
 
             using (Server server = new Server(9000)) 
@@ -217,7 +282,11 @@ namespace SockLibUnitTests {
             foreach (var f in recFiles) File.Delete(f);
         }
 
+#if DEVICE
+        [Test]
+#else
         [TestMethod]
+#endif
         public void AutoHandle() {
             using (Server server = new Server(9000))
             using (Client client = new Client("localhost", 9000)) {

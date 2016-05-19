@@ -65,6 +65,13 @@ namespace Babbacombe.SockLib {
 
         private static bool isRunningOnMono => isRunningOnMonoValue.Value;
 
+        private static readonly Lazy<bool> isRunningOnLinuxValue = new Lazy<bool>(() => {
+            int p = (int)Environment.OSVersion.Platform;
+            return (p == 4) || (p == 6) || (p == 128);
+        });
+
+        private static bool isRunningOnLinux => isRunningOnLinuxValue.Value;
+
         /// <summary>
         /// Whether to raise an exception automatically when a Status message is received as the reply in a Transaction.
         /// Defaults to False.
@@ -439,13 +446,42 @@ namespace Babbacombe.SockLib {
         public bool IsOpen {
             get {
                 if (_client == null) return false;
-                if (isRunningOnMono) return _client.Connected;
-                var state = IPGlobalProperties.GetIPGlobalProperties()
-                    .GetActiveTcpConnections()
+
+#if ANDROID
+                var connections = new DroidIPGlobalProperties().GetActiveTcpConnections();
+#else
+                var connections = IPGlobalProperties.GetIPGlobalProperties();
+#endif
+                var state = connections
                     .SingleOrDefault(x => x.LocalEndPoint.Equals(_client.Client.LocalEndPoint));
-                if (state.State == TcpState.Established) return true;
+                if (correctedTcpState(state.State) == TcpState.Established) return true;
                 Close();
                 return false;
+            }
+        }
+
+        /// <summary>
+        /// The states that mono returns on linux are incorrect.
+        /// https://bugzilla.xamarin.com/show_bug.cgi?id=15098
+        /// http://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/tree/include/net/tcp_states.h?id=HEAD
+        /// </summary>
+        /// <param name="origState"></param>
+        /// <returns></returns>
+        private TcpState correctedTcpState(TcpState origState) {
+            if (!(isRunningOnMono && isRunningOnLinux)) return origState;
+            switch ((int)origState) {
+                case 1: return TcpState.Established;
+                case 2: return TcpState.SynSent;
+                case 3: return TcpState.SynReceived;
+                case 4: return TcpState.FinWait1;
+                case 5: return TcpState.FinWait2;
+                case 6: return TcpState.TimeWait;
+                case 7: return TcpState.Closed;
+                case 8: return TcpState.CloseWait;
+                case 9: return TcpState.LastAck;
+                case 10: return TcpState.Listen;
+                case 11: return TcpState.Closing;
+                default: return TcpState.Unknown;
             }
         }
     }

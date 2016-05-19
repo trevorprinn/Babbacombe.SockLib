@@ -1,5 +1,4 @@
 ﻿using Babbacombe.SockLib;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -7,16 +6,36 @@ using System.IO.Compression;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+#if DEVICE
+using NUnit.Framework;
+#else
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+#endif
 
 namespace SockLibUnitTests {
+#if DEVICE
+    [TestFixture]
+#else
     [TestClass]
+#endif
     public class ZipMessageTests {
 
+        private bool isDevice
+#if DEVICE
+            => true;
+#else
+            => false;
+#endif
+
+#if DEVICE
+        [Test]
+#else
         [TestMethod]
+#endif
         public void TransferZippedData() {
             RecMessage.CustomMessages.Add('Z', typeof(RecZipMessage));
 
-            using (var f = new RandomFile(10.Megs()))
+            using (var f = new RandomFile(isDevice ? 1.Megs() : 10.Megs()))
             using (var fs = f.GetStream()) {
                 var msg = new SendZipMessage("TestZipStream", fs);
                 var reply = (RecZipMessage)MessageTests.TransferMessage(msg);
@@ -24,7 +43,7 @@ namespace SockLibUnitTests {
                 reply.Stream.Dispose();
             }
 
-            using (var f = new RandomFile(10.Megs(), "\r\n"))
+            using (var f = new RandomFile(isDevice ? 1.Megs() : 10.Megs(), "\r\n"))
             using (var fs = f.GetStream()) {
                 var msg = new SendZipMessage("TestZipStream", fs);
                 var reply = (RecZipMessage)MessageTests.TransferMessage(msg);
