@@ -450,7 +450,7 @@ namespace Babbacombe.SockLib {
 #if ANDROID
                 var connections = new DroidIPGlobalProperties().GetActiveTcpConnections();
 #else
-                var connections = IPGlobalProperties.GetIPGlobalProperties();
+                var connections = IPGlobalProperties.GetIPGlobalProperties().GetActiveTcpConnections();
 #endif
                 var state = connections
                     .SingleOrDefault(x => x.LocalEndPoint.Equals(_client.Client.LocalEndPoint));
