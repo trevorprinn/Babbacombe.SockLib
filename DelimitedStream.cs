@@ -81,10 +81,9 @@ namespace Babbacombe.SockLib {
 
         public override int Read(byte[] buffer, int offset, int count) {
             bool delimiterReached = false;
-            if (_endOfStream && !_outerPushbackBuffer.Any() && !_pushBackBuffer.Any()) return 0;
+            if (_endOfStream) return 0;
 
             int bytesRead = 0;
-            for (int i = 0; i < count && _outerPushbackBuffer.Any(); i++) buffer[offset + bytesRead++] = _outerPushbackBuffer.Dequeue();
 
             List<int> delimiterBuffer = new List<int>(100);
             int delimCount = 0; // Count of how many delimiter characters have been read and matched (not inc \r\n)
@@ -133,8 +132,8 @@ namespace Babbacombe.SockLib {
         }
 
         private int readByte() {
-            if (_outerPushbackBuffer.Any()) return _outerPushbackBuffer.Dequeue();
             if (_pushBackBuffer.Any()) return _pushBackBuffer.Dequeue();
+            if (_outerPushbackBuffer.Any()) return _outerPushbackBuffer.Dequeue();
             if (_endOfStream) return -1;
             if (_position >= _bufferCount) {
                 _position = 0;
