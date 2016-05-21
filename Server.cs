@@ -160,16 +160,20 @@ namespace Babbacombe.SockLib {
         private void listen() {
             while (!_stop) {
                 if (_listener.Pending()) {
-                    ThreadPool.QueueUserWorkItem((c) => {
-                        // Run each client connection on its own thread.
-                        handleClient((TcpClient)c);
-                    }, _listener.AcceptTcpClient());
+                    var ct = new Thread(new ParameterizedThreadStart(handleClient));
+                    ct.IsBackground = true;
+                    ct.Name = "Server Client thread";
+                    ct.Start(_listener.AcceptTcpClient());
                 }
                 Thread.Sleep(100);
             }
             _listener.Stop();
             _listener = null;
             _listenThread = null;
+        }
+
+        private void handleClient(object c) {
+            handleClient((TcpClient)c);
         }
 
         private void handleClient(TcpClient c) {
@@ -216,7 +220,7 @@ namespace Babbacombe.SockLib {
                             client.SendMessage(reply);
                         }
                     } while (true);
-                } catch (SocketClosedException) { 
+                } catch (SocketClosedException) {
                     // The client has disconnected
                 } finally {
                     lock (_clients) {
