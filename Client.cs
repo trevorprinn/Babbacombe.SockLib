@@ -446,7 +446,13 @@ namespace Babbacombe.SockLib {
         public bool IsOpen {
             get {
                 if (_client == null) return false;
-
+#if __IOS__
+                // Can't check the connection on iOS, as far as I know, so this is the best way to check for now.
+                // In future, perhaps send a small packet to test it.
+                if (_client.Client.Connected) return true;
+                Close();
+                return false;
+#else
 #if ANDROID
                 var connections = new DroidIPGlobalProperties().GetActiveTcpConnections();
 #else
@@ -457,6 +463,7 @@ namespace Babbacombe.SockLib {
                 if (correctedTcpState(state.State) == TcpState.Established) return true;
                 Close();
                 return false;
+#endif
             }
         }
 
