@@ -37,6 +37,7 @@ namespace SockLibUnitTests {
 #else
         [TestMethod]
 #endif
+        [Timeout(10000)]
         public void TextMessage() {
             testTextMessage("TestText", "abcdefg\r\nxyz");
             testTextMessage("qwerty", "abc\r\n");
@@ -74,6 +75,7 @@ namespace SockLibUnitTests {
 #else
         [TestMethod]
 #endif
+        [Timeout(10000)]
         public void TextLinesMessage() {
             var msg = new SendTextMessage("TextLines", "abcde\nfghij\nvwxyz");
             var reply = (RecTextMessage)TransferMessage(msg);
@@ -97,6 +99,7 @@ namespace SockLibUnitTests {
 #else
         [TestMethod]
 #endif
+        [Timeout(10000)]
         public void BinaryMessage() {
             byte[] bin = new byte[isDevice ? 10000 : 1000000];
             new Random().NextBytes(bin);
@@ -111,6 +114,7 @@ namespace SockLibUnitTests {
 #else
         [TestMethod]
 #endif
+        [Timeout(60000)]
         public void BinaryMessageStream() {
             using (var f = new RandomFile(isDevice ? 1.Megs() : 10.Megs())) 
             using (var fs = f.GetStream()) {
@@ -120,7 +124,7 @@ namespace SockLibUnitTests {
                 reply.Stream.Dispose();
             }
 
-            using (var f = new RandomFile(10.Megs(), "\r\n"))
+            using (var f = new RandomFile(isDevice ? 1.Megs() : 10.Megs(), "\r\n"))
             using (var fs = f.GetStream()) {
                 var msg = new SendBinaryMessage("TestBinStream", fs);
                 var reply = (RecBinaryMessage)TransferMessage(msg);
@@ -134,6 +138,7 @@ namespace SockLibUnitTests {
 #else
         [TestMethod]
 #endif
+        [Timeout(10000)]
         public void FilenamesMessage() {
             var names = Enumerable.Range(1, 150).Select(i => Path.GetRandomFileName()).Concat(Enumerable.Range(1, 150).Select(i => Path.GetRandomFileName()));
             var msg = new SendFilenamesMessage("TestFilenames", names);
@@ -147,10 +152,13 @@ namespace SockLibUnitTests {
 #else
         [TestMethod]
 #endif
+        [Timeout(120000)]
         public void MultipartMessage() {
             var r = new Random();
-            var files = Enumerable.Range(1, 10).Select(i => new RandomFile(r.Next(isDevice ? 1.Megs() : 50.Megs()), i % 2 == 0 ? "\r\n" : null)).ToArray();
-            var bins = Enumerable.Range(1, 5).Select(i => {
+            int fileCount = isDevice ? 5 : 10;
+            int binCount = isDevice ? 2 : 5;
+            var files = Enumerable.Range(1, fileCount).Select(i => new RandomFile(r.Next(isDevice ? 1.Megs() : 50.Megs()), i % 2 == 0 ? "\r\n" : null)).ToArray();
+            var bins = Enumerable.Range(1, binCount).Select(i => {
                 var buf = new byte[r.Next(isDevice ? 1.Megs() : 10.Megs())];
                 r.NextBytes(buf);
                 return new { Name = Path.GetRandomFileName(), Data = buf };
@@ -159,34 +167,37 @@ namespace SockLibUnitTests {
             foreach (var bin in bins) items.Insert(r.Next(items.Count + 1), new SendMultipartMessage.BinaryItem(bin.Name, bin.Data));
             var msg = new SendMultipartMessage("TestMp", items);
             var reply = (RecMultipartMessage)TransferMessage(msg, true);
-            var man = new MultipartManager(reply.Stream);
-            int fcount = 0;
-            int bcount = 0;
-            man.BinaryUploaded += (s, e) => {
-                var bin = bins.Single(b => b.Name == e.Info.Name);
-                var pos = 0;
-                int buflen = isDevice ? 1.Megs() / 10 : 1.Megs();
-                var buf = new byte[buflen];
-                int rcount;
-                do {
-                    rcount = e.Contents.Read(buf, 0, buflen);
-                    Assert.IsFalse(bin.Data.Skip(pos).Zip(buf.Take(rcount), (b1, b2) => b1 == b2).Any(res => false));
-                    pos += rcount;
-                } while (rcount > 0);
-                bcount++;
-                Assert.IsTrue(pos == bin.Data.Length);
-            };
-            man.FileUploaded += (s, e) => {
-                var file = files.Single(f => f.Name == e.Info.Filename);
-                fcount++;
-                Assert.IsTrue(file.IsEqual(e.Contents));
-            };
-            man.Process();
-            Assert.AreEqual(10, fcount, "File count");
-            Assert.AreEqual(5, bcount, "Binary count");
-            foreach (var f in files) f.Dispose();
-            reply.Stream.Dispose();
-            cleanUp();
+            try {
+                var man = new MultipartManager(reply.Stream);
+                int fcount = 0;
+                int bcount = 0;
+                man.BinaryUploaded += (s, e) => {
+                    var bin = bins.Single(b => b.Name == e.Info.Name);
+                    var pos = 0;
+                    int buflen = isDevice ? 1.Megs() / 10 : 1.Megs();
+                    var buf = new byte[buflen];
+                    int rcount;
+                    do {
+                        rcount = e.Contents.Read(buf, 0, buflen);
+                        Assert.IsFalse(bin.Data.Skip(pos).Zip(buf.Take(rcount), (b1, b2) => b1 == b2).Any(res => false));
+                        pos += rcount;
+                    } while (rcount > 0);
+                    bcount++;
+                    Assert.IsTrue(pos == bin.Data.Length);
+                };
+                man.FileUploaded += (s, e) => {
+                    var file = files.Single(f => f.Name == e.Info.Filename);
+                    fcount++;
+                    Assert.IsTrue(file.IsEqual(e.Contents));
+                };
+                man.Process();
+                Assert.AreEqual(fileCount, fcount, "File count");
+                Assert.AreEqual(binCount, bcount, "Binary count");
+            } finally {
+                foreach (var f in files) f.Dispose();
+                reply.Stream.Dispose();
+                cleanUp();
+            }
         }
 
 #if DEVICE
@@ -194,6 +205,7 @@ namespace SockLibUnitTests {
 #else
         [TestMethod]
 #endif
+        [Timeout(30000)]
         public void MultipartStream() {
             var file = new RandomFile(isDevice ? 1.Megs() : 10.Megs());
             var item = new SendMultipartMessage.FileItem("abc.dat");
@@ -214,6 +226,34 @@ namespace SockLibUnitTests {
         private static void cleanUp() {
             foreach (var f in _tempFiles) f.Delete();
             _tempFiles.Clear();
+        }
+
+#if DEVICE
+        [Test]
+#else
+        [TestMethod]
+#endif
+        [Timeout(10000)]
+        public void MultipleTextMessages() {
+            var msgs = Enumerable.Range(0, 20).Select(i => new SendTextMessage("Text", $"Message {i}")).ToList();
+            var s = new MemoryStream();
+            foreach (var m in msgs) m.Send(s);
+            s.Seek(0, SeekOrigin.Begin);
+            byte[] overrun = null;
+            for (int i = 0; i < 20; i++) {
+                using (var ds = new DelimitedStream(s, overrun)) {
+                    var header = new RecMessageHeader(ds);
+                    var msg = RecMessage.Create(header, ds);
+#if DEVICE
+                    Assert.That(msg, Is.InstanceOf<RecTextMessage>());
+#else
+                    Assert.IsInstanceOfType(msg, typeof(RecTextMessage));
+#endif
+                    Assert.AreEqual(((RecTextMessage)msg).Text, $"Message {i}");
+                    overrun = ds.GetOverrun();
+                }
+            }
+            Assert.IsTrue(overrun.Length == 0);
         }
     }
 }
