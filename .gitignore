@@ -6,3 +6,5 @@ obj
 *.nupkg
 packages
 TestResults
+.vs
+*.user
