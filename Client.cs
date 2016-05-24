@@ -442,6 +442,8 @@ namespace Babbacombe.SockLib {
 
         /// <summary>
         /// Gets whether the connection is currently open.
+        /// NB On iOS this just returns whether the connection was previously open, as it is unable to
+        /// determine whether the connection is still established.
         /// </summary>
         public bool IsOpen {
             get {

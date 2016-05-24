@@ -1,9 +1,9 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
     <metadata>
-        <id>Babbacombe.SockLib.Xam.Android</id>
+        <id>Babbacombe.SockLib.Xam.iOS</id>
         <version>1.0.1</version>
-        <title>Babbacombe SockLib Library (Android build)</title>
+        <title>Babbacombe SockLib Library (iOS build)</title>
         <authors>Trevor Prinn</authors>
         <licenseUrl>https://github.com/trevorprinn/Babbacombe.SockLib/blob/master/LICENSE</licenseUrl>
         <projectUrl>https://github.com/trevorprinn/Babbacombe.SockLib</projectUrl>
@@ -12,7 +12,7 @@
         <copyright>Copyright © Babbacombe Computers Ltd 2015-2016</copyright>
     </metadata>
     <files>
-        <file src="bin\Release\Babbacombe.SockLib.Xam.Android.dll" target="lib\Babbacombe.SockLib.Xam.Android.dll" />
-        <file src="..\bin\Release\Babbacombe.SockLib.XML" target="lib\Babbacombe.SockLib.Xam.Android.XML" />
+        <file src="bin\Release\Babbacombe.SockLib.Xam.iOS.dll" target="lib\Babbacombe.SockLib.Xam.iOS.dll" />
+        <file src="..\bin\Release\Babbacombe.SockLib.XML" target="lib\Babbacombe.SockLib.Xam.iOS.XML" />
     </files>
 </package>
