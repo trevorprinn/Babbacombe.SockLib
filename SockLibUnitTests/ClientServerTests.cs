@@ -262,7 +262,7 @@ namespace SockLibUnitTests {
 #else
         [TestMethod]
 #endif
-        [Timeout(120000)]
+        [Timeout(60000)]
         public void TransferFiles() {
             var sendFiles = new List<RandomFile>(Enumerable.Range(1, isDevice ? 5 : 10)
                 .Select(i => new RandomFile(isDevice ? 1.Megs() : 5.Megs())));

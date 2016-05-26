@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Text;
+using System.Reflection;
 #if DEVICE
 using NUnit.Framework;
 #else
@@ -116,7 +118,7 @@ namespace SockLibUnitTests {
 #endif
         [Timeout(60000)]
         public void BinaryMessageStream() {
-            using (var f = new RandomFile(isDevice ? 1.Megs() : 10.Megs())) 
+            using (var f = new RandomFile(isDevice ? 1.Megs() : 10.Megs()))
             using (var fs = f.GetStream()) {
                 var msg = new SendBinaryMessage("TestBinStream", fs);
                 var reply = (RecBinaryMessage)TransferMessage(msg);
@@ -157,7 +159,7 @@ namespace SockLibUnitTests {
             var r = new Random();
             int fileCount = isDevice ? 5 : 10;
             int binCount = isDevice ? 2 : 5;
-            var files = Enumerable.Range(1, fileCount).Select(i => new RandomFile(r.Next(isDevice ? 1.Megs() : 50.Megs()), i % 2 == 0 ? "\r\n" : null)).ToArray();
+            var files = Enumerable.Range(1, fileCount).Select(i => new RandomFile(r.Next(isDevice ? 1.Megs() : 10.Megs()), i % 2 == 0 ? "\r\n" : null)).ToArray();
             var bins = Enumerable.Range(1, binCount).Select(i => {
                 var buf = new byte[r.Next(isDevice ? 1.Megs() : 10.Megs())];
                 r.NextBytes(buf);
@@ -254,6 +256,66 @@ namespace SockLibUnitTests {
                 }
             }
             Assert.IsTrue(overrun.Length == 0);
+        }
+
+#if DEVICE
+        [Test]
+#else
+        [TestMethod]
+#endif
+        [Timeout(30000)]
+        public void UploadBackupZipMessage() {
+            // This file was failing to send correctly at one point. Left it in the tests as an extra check.
+            testSendingZip("Backup.zip");
+        }
+
+        /// <summary>
+        /// Tests sending a zip file stored in a resource.
+        /// The zip is unzipped before sending and sent as a set of files, which are saved to disk
+        /// and then compared with the files in the original zip.
+        /// </summary>
+        /// <param name="name"></param>
+        private void testSendingZip(string name) {
+            var msg = new SendMultipartMessage("TestZip");
+            string tmpFolder;
+            using (var zips = Assembly.GetExecutingAssembly().GetManifestResourceStream("SockLibUnitTests." + name))
+            using (var zip = new ZipArchive(zips, ZipArchiveMode.Read)) {
+                msg.Items.AddRange(zip.Entries.Select(e => new SendMultipartMessage.FileItem(e.Name)));
+                msg.GetItemStream += (sender, e) => {
+                    e.Stream = zip.GetEntry(e.Filename).Open();
+                };
+
+                tmpFolder = Path.Combine(Path.GetTempPath(), "SockLibUnitTest-" + name);
+                if (Directory.Exists(tmpFolder)) Directory.Delete(tmpFolder, true);
+                Directory.CreateDirectory(tmpFolder);
+                var reply = (RecMultipartMessage)TransferMessage(msg);
+                reply.Manager.FileUploaded += (sender, e) => {
+                    using (var s = new FileStream(Path.Combine(tmpFolder, e.Info.Filename), FileMode.Create, FileAccess.Write)) {
+                        e.Contents.CopyTo(s);
+                    }
+                };
+                reply.Manager.Process();
+            }
+
+            bool cleanup = true;
+            using (var zips = Assembly.GetExecutingAssembly().GetManifestResourceStream("SockLibUnitTests." + name))
+            using (var zip = new ZipArchive(zips, ZipArchiveMode.Read)) {
+                foreach (var z in zip.Entries) {
+                    using (var zs = z.Open())
+                    using (var fs = File.OpenRead(Path.Combine(tmpFolder, z.Name))) {
+                        int fb;
+                        do {
+                            fb = fs.ReadByte();
+                            var zb = zs.ReadByte();
+                            Assert.AreEqual(fb, zb, $"Bytes do not match in {name}-{z.Name}");
+                            if (fb != zb) cleanup = false;
+                        } while (fb >= 0);
+                    }
+                }
+            }
+            if (cleanup) {
+                Directory.Delete(tmpFolder, true);
+            }
         }
     }
 }

@@ -2,10 +2,10 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.IO.Compression;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using ICSharpCode.SharpZipLib.GZip;
 #if DEVICE
 using NUnit.Framework;
 #else
@@ -64,8 +64,11 @@ namespace SockLibUnitTests {
         protected override char MessageType => 'Z';
 
         protected override void SendData(Stream stream) {
-            var zs = new GZipStream(stream, CompressionMode.Compress);
-            _inStream.CopyTo(zs);
+            using (var zs = new GZipOutputStream(stream)) {
+                zs.IsStreamOwner = false;
+                _inStream.CopyTo(zs);
+                zs.Finish();
+            }
         }
     }
 
@@ -73,7 +76,7 @@ namespace SockLibUnitTests {
         public RecZipMessage(RecMessageHeader header, Stream stream) : base(header, stream) { }
 
         public Stream GetDataStream() {
-            return new GZipStream(Stream, CompressionMode.Decompress);
+            return new GZipInputStream(Stream);
         }
     }
 }

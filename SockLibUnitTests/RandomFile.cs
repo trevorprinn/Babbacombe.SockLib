@@ -42,7 +42,7 @@ namespace SockLibUnitTests {
                     fb = fs.ReadByte();
                     int sb = other.ReadByte();
                     if (fb != sb) return false;
-                } while (fb > 0);
+                } while (fb >= 0);
             }
             return true;
         }
