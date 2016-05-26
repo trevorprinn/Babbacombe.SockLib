@@ -49,10 +49,17 @@ namespace Babbacombe.SockLib {
 
         public DelimitedStream(Stream stream, byte[] overrun = null) {
             _stream = stream;
-            if (overrun != null) PushbackOverrun(overrun);
+            if (overrun != null && overrun.Any()) {
+                overrun.CopyTo(_buffer, 0);
+                _bufferCount = overrun.Length;
+            }
 			try {
-            	Delimiter = readLine(true);
-			} catch (IOException) { }
+                do {
+                    Delimiter = readLine(true);
+                } while (Delimiter != null && Delimiter == "");
+            } catch (IOException) {
+                Delimiter = null;
+            }
         }
 
         public override bool CanRead {
@@ -80,14 +87,17 @@ namespace Babbacombe.SockLib {
         public bool EndOfStream { get { return _endOfStream && !_pushBackBuffer.Any() && !_outerPushbackBuffer.Any(); } }
 
         public override int Read(byte[] buffer, int offset, int count) {
-            bool delimiterReached = false;
-            if (_endOfStream) return 0;
+            if (EndOfStream) return 0;
 
             int bytesRead = 0;
 
+            while (_outerPushbackBuffer.Any() && bytesRead < count) {
+                buffer[offset + bytesRead++] = _outerPushbackBuffer.Dequeue();
+            }
+
             List<int> delimiterBuffer = new List<int>(100);
             int delimCount = 0; // Count of how many delimiter characters have been read and matched (not inc \r\n)
-            while (bytesRead < count && !delimiterReached) {
+            while (bytesRead < count && !_endOfStream) {
                 int ch = readByte();
                 if (ch < 0) {
                     _endOfStream = true;
@@ -116,7 +126,7 @@ namespace Babbacombe.SockLib {
                             // Found the delimiter
                             // Read to the end of the line
                             do { ch = readByte(); } while (ch >= 0 && ch != '\n');
-                            _endOfStream = delimiterReached = true;
+                            _endOfStream = true;
                             _pushBackBuffer.Clear();
                         }
                     } else {
@@ -132,9 +142,8 @@ namespace Babbacombe.SockLib {
         }
 
         private int readByte() {
+            if (EndOfStream) return -1;
             if (_pushBackBuffer.Any()) return _pushBackBuffer.Dequeue();
-            if (_outerPushbackBuffer.Any()) return _outerPushbackBuffer.Dequeue();
-            if (_endOfStream) return -1;
             if (_position >= _bufferCount) {
                 _position = 0;
                 _bufferCount = _stream.Read(_buffer, 0, 8192);
@@ -168,6 +177,7 @@ namespace Babbacombe.SockLib {
         }
 
         private void pushback(List<int> data, int ch = -1) {
+            _pushBackBuffer.Clear();
             foreach (int c in data) _pushBackBuffer.Enqueue(c);
             data.Clear();
             if (ch >= 0) _pushBackBuffer.Enqueue(ch);

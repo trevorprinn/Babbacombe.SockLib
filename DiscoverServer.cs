@@ -90,7 +90,6 @@ namespace Babbacombe.SockLib {
 					await _server.SendAsync(_advertisment, _broadcast, cancel);
 				}
 			}
-			System.Diagnostics.Debug.WriteLine("Server stopped");
 		}
 
         /// <summary>
