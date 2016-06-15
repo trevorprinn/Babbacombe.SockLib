@@ -31,11 +31,8 @@ using System.Threading.Tasks;
 
 namespace Babbacombe.SockLib {
     /// <summary>
-    /// A UDP server that can be used to advertise the IP address and port number of a SockLib server on a network.
+    /// A UDP server that advertises the IP address and port number of a SockLib server on a network.
     /// </summary>
-    /// <remarks>
-    /// DiscoverClient broadcasts UDP packets which this server reponds to.
-    /// </remarks>
     public class DiscoverServer : IDisposable {
         private UdpClient _server;
 
@@ -45,6 +42,14 @@ namespace Babbacombe.SockLib {
         private byte[] _advertisment;
 
         private string _serviceName;
+
+        private IPEndPoint _broadcast;
+
+        /// <summary>
+        /// Gets or sets how often to broadcast (in millisecs).
+        /// </summary>
+        public int BroadcastRate { get; set; } = 1000;
+
 
         private CancellationTokenSource _cancel;
 
@@ -69,28 +74,41 @@ namespace Babbacombe.SockLib {
             _serviceName = serviceName;
             _advertisment = Encoding.UTF8.GetBytes(string.Format("{0}:{1}", serviceName, servicePort));
 
-            _server = new UdpClient(port);
+            _broadcast = new IPEndPoint(IPAddress.Broadcast, port);
+
+            _server = new UdpClient();
+			_server.EnableBroadcast = true;
             _cancel = new CancellationTokenSource();
 
-            _runTask = Task.Run(() => runServer(_cancel.Token), _cancel.Token);
+			_runTask = Task.Run(() => runServer(_cancel.Token), _cancel.Token);
         }
 
-        private async Task runServer(CancellationToken cancel) {
-            while (!cancel.IsCancellationRequested) {
-                var msg = await _server.ReceiveAsync(cancel);
-                if (!cancel.IsCancellationRequested && msg != null &&
-                    Encoding.UTF8.GetString(msg.Value.Buffer) == _serviceName) {
-                    await _server.SendAsync(_advertisment, msg.Value.RemoteEndPoint, cancel);
-                }
-            }
-            System.Diagnostics.Debug.WriteLine("Server stopped");
-        }
+		private async Task runServer(CancellationToken cancel) {
+			while (!cancel.IsCancellationRequested) {
+                await Task.Delay(BroadcastRate, cancel);
+				if (!cancel.IsCancellationRequested) {
+					await _server.SendAsync(_advertisment, _broadcast, cancel);
+				}
+			}
+		}
 
-        public async void Dispose() {
-            _cancel.Cancel();
-            await _runTask;
-            _server.Close();
-            _cancel.Dispose();
+        /// <summary>
+        /// Shuts down the server and stops broadcasting.
+        /// </summary>
+		protected virtual void Dispose(bool disposing) {
+			if (disposing) {
+				_cancel.Cancel();
+				_server.Close();
+				_cancel.Dispose();
+			}
+		}
+
+        /// <summary>
+        /// Shuts down the server and stops broadcasting.
+        /// </summary>
+        public void Dispose() {
+			Dispose(true);
+			GC.SuppressFinalize(this);
         }
     }
 }

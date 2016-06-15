@@ -4,3 +4,7 @@ obj
 /TestResults
 *.userprefs
 *.nupkg
+packages
+TestResults
+.vs
+*.user

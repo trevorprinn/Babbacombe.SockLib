@@ -35,6 +35,7 @@ namespace Babbacombe.SockLib {
         // Taken from http://blogs.msdn.com/b/pfxteam/archive/2012/10/05/how-do-i-cancel-non-cancelable-async-operations.aspx
         public static async Task<T> WithCancellation<T>(
             this Task<T> task, CancellationToken cancellationToken) {
+			task.GrabExceptions();
             var tcs = new TaskCompletionSource<bool>();
             using (cancellationToken.Register(
                         s => ((TaskCompletionSource<bool>)s).TrySetResult(true), tcs))
@@ -47,7 +48,8 @@ namespace Babbacombe.SockLib {
             var read = client.ReceiveAsync();
             try {
                 return await read.WithCancellation(cancel);
-            } catch (OperationCanceledException) { }
+            } catch (OperationCanceledException) { 
+			}
             return null;
         }
 
@@ -57,5 +59,13 @@ namespace Babbacombe.SockLib {
                 await write.WithCancellation(cancel);
             } catch (OperationCanceledException) { }
         }
+
+		public static void GrabExceptions(this Task task) {
+			task.ContinueWith(t => {
+				var aggException = t.Exception.Flatten();
+				foreach (var exception in aggException.InnerExceptions) System.Diagnostics.Debug.WriteLine("Grabbed Exception: " + exception.Message);
+			}, 
+				TaskContinuationOptions.OnlyOnFaulted);
+		}
     }
 }

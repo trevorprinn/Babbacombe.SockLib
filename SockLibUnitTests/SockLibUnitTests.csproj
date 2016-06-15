@@ -35,7 +35,12 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="ICSharpCode.SharpZipLib, Version=0.86.0.518, Culture=neutral, PublicKeyToken=1b03e6acf1164f73, processorArchitecture=MSIL">
+      <HintPath>..\packages\SharpZipLib.0.86.0\lib\20\ICSharpCode.SharpZipLib.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System" />
+    <Reference Include="System.IO.Compression" />
     <Reference Include="System.Windows.Forms" />
   </ItemGroup>
   <Choose>
@@ -59,12 +64,19 @@
     <Compile Include="RandomFile.cs" />
     <Compile Include="TestListenClient.cs" />
     <Compile Include="TestListenServer.cs" />
+    <Compile Include="ZipMessageTests.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\SockLib.csproj">
       <Project>{341fa25a-3fac-4ed1-9e7f-f895c2030335}</Project>
       <Name>SockLib</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Backup.zip" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
   </ItemGroup>
   <Choose>
     <When Condition="'$(VisualStudioVersion)' == '10.0' And '$(IsCodedUITest)' == 'True'">

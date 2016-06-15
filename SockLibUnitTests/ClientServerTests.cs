@@ -4,18 +4,37 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+#if DEVICE
+using NUnit.Framework;
+#else
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+#endif
 
 using Babbacombe.SockLib;
 
 namespace SockLibUnitTests {
+#if DEVICE
+    [TestFixture]
+#else
     [TestClass]
+#endif
     public class ClientServerTests {
+
+        private bool isDevice
+#if DEVICE
+            => true;
+#else
+            => false;
+#endif
 
         /// <summary>
         /// Test a single transaction works with a single client.
         /// </summary>
+#if DEVICE
+        [Test]
+#else
         [TestMethod]
+#endif
         public void OneTextTransaction() {
             using (Server server = new Server(9000)) 
             using (Client client = new Client("localhost", 9000)) {
@@ -29,7 +48,11 @@ namespace SockLibUnitTests {
                 Assert.AreEqual(1, server.Clients.Count());
 
                 var reply = client.Transaction(new SendTextMessage("Test", "abcde"));
+#if DEVICE
+                Assert.That(reply, Is.InstanceOf<RecTextMessage>());
+#else
                 Assert.IsInstanceOfType(reply, typeof(RecTextMessage));
+#endif
                 Assert.AreEqual("Test", reply.Command);
                 Assert.AreEqual("abcde", ((RecTextMessage)reply).Text);
 
@@ -42,7 +65,11 @@ namespace SockLibUnitTests {
         }
 
         private SendMessage echoText(ServerClient c, RecTextMessage r) {
+#if DEVICE
+            Assert.That(r, Is.InstanceOf<RecTextMessage>());
+#else
             Assert.IsInstanceOfType(r, typeof(RecTextMessage));
+#endif
 
             return new SendTextMessage(r.Command, r.Text);
         }
@@ -50,35 +77,55 @@ namespace SockLibUnitTests {
         /// <summary>
         /// Tests multiple clients sending multiple transactions get back the correct replies.
         /// </summary>
+#if DEVICE
+        [Test]
+#else
         [TestMethod]
+#endif
+        [Timeout(60000)]
         public void MultipleClientTextTransactions() {
+#if DEVICE
+            const int clientCount = 5;
+            const int transCount = 10;
+#else
             const int clientCount = 25;
             const int transCount = 25;
+#endif
             using (Server server = new Server(9000)) {
                 server.Handlers.Add<RecTextMessage>("Test", echoText);
 
                 List<Client> clients = new List<Client>();
-                for (int i = 0; i < clientCount; i++) {
-                    var client = new Client("localhost", 9000);
-                    client.Open();
-                    clients.Add(client);
-                }
-                Parallel.ForEach(clients, client => {
-                    int cno = clients.IndexOf(client);
-                    Parallel.For(1, transCount, tno => {
-                        string text = string.Format("Client: {0}, Transaction {1}", cno, tno);
-                        var reply = (RecTextMessage)client.Transaction(new SendTextMessage("Test", text));
-                        Assert.AreEqual(text, reply.Text);
+                try {
+                    for (int i = 0; i < clientCount; i++) {
+                        var client = new Client("localhost", 9000);
+                        client.Open();
+                        clients.Add(client);
+                    }
+                    Parallel.ForEach(clients, client => {
+                        int cno = clients.IndexOf(client);
+                        Parallel.For(0, transCount, tno => {
+                            string text = string.Format("Client: {0}, Transaction {1}", cno, tno);
+                            System.Diagnostics.Debug.WriteLine($"Send {text}");
+                            var reply = (RecTextMessage)client.Transaction(new SendTextMessage("Test", text));
+                            System.Diagnostics.Debug.WriteLine($"Repl {text}");
+                            Assert.AreEqual(text, reply.Text);
+                        });
                     });
-                });
-                clients.ForEach(c => c.Dispose());
+                } finally {
+                    clients.ForEach(c => c.Dispose());
+                }
             }
         }
 
         /// <summary>
         /// Tests that the client is closed when the server closes.
+        /// This test currently fails on iOS because it is unable to determine whether the connection is established.
         /// </summary>
+#if DEVICE
+        [Test]
+#else
         [TestMethod]
+#endif
         public void CloseServer() {
             Client client;
             using (Server server = new Server(9000)) {
@@ -95,7 +142,11 @@ namespace SockLibUnitTests {
         /// <summary>
         /// Tests a server can send a delayed response to a message from a client.
         /// </summary>
+#if DEVICE
+        [Test]
+#else
         [TestMethod]
+#endif
         public void SimpleListen() {
             using (Server server = new Server(9000))
             using (Client client = new Client("localhost", 9000, Client.Modes.Listening)) {
@@ -113,7 +164,11 @@ namespace SockLibUnitTests {
             }
         }
 
+#if DEVICE
+        [Test]
+#else
         [TestMethod]
+#endif
         public void CloseClient() {
             using (Server server = new Server(9000)) {
                 server.Handlers.Add<RecTextMessage>("Test", echoTextDelayed);
@@ -140,54 +195,77 @@ namespace SockLibUnitTests {
         /// client to the server, and tests that the correct numbers have been received by each in the
         /// correct order.
         /// </summary>
+#if DEVICE
+        [Test]
+#else
         [TestMethod]
+#endif
+        [Timeout(120000)]
         public async Task Listening() {
+#if DEVICE
+            const int clientCount = 2;
+            const int serverMsgCount = 2;
+            const int clientMsgCount = 2;
+#else
             const int clientCount = 5;
             const int serverMsgCount = 50;
             const int clientMsgCount = 50;
+#endif
 
             var clients = new List<TestListenClient>();
             using (var server = new TestListenServer(serverMsgCount)) {
-                for (int i = 0; i < clientCount; i++) {
-                    clients.Add(new TestListenClient(i + 1, clientMsgCount));
+                try {
+                    for (int i = 0; i < clientCount; i++) {
+                        clients.Add(new TestListenClient(i + 1, clientMsgCount));
+                    }
+
+                    // Wait for all the clients to get connected up, so that
+                    // they all get broadcast to.
+                    int cc;
+                    while ((cc = server.Clients.Count()) < clientCount) {
+                        System.Diagnostics.Debug.WriteLine($"server cc: {cc}");
+                        Thread.Sleep(1000);
+                    }
+                    System.Diagnostics.Debug.WriteLine("Got all the clients");
+
+                    List<Task> tasks = new List<Task>();
+
+                    // Send loads of messages from the clients to the server.
+                    foreach (var c in clients) tasks.Add(c.Exercise());
+                    // Broadcast loads of messages from the server to the clients.
+                    tasks.Add(server.Exercise());
+
+                    // Wait until all the messages have been sent.
+                    await Task.WhenAll(tasks);
+
+                    // Wait for the last few messages to be received and processed.
+                    await Task.Delay(2000);
+
+                    foreach (var c in clients) {
+                        // Check the client didn't drop out of listening mode due to an exception.
+                        Assert.IsTrue(c.Mode == Client.Modes.Listening);
+                        // Check the correct number of messages were received.
+                        Assert.AreEqual(clientMsgCount, server.GetRecMessages(c.Ident).Count(), "Server received messages");
+                        Assert.AreEqual(serverMsgCount, c.GetRecMessages().Count(), "Client {0} received messages", c.Ident);
+                        // Check the correct messages were received at both ends in the correct order.
+                        Assert.IsFalse(server.GetRecMessages(c.Ident).Zip(c.GetSentMessages(), (sm, rm) => sm == rm).Any(r => !r), "Server received messages");
+                        Assert.IsFalse(c.GetRecMessages().Zip(server.GetSentMessages(), (sm, rm) => sm == rm).Any(r => !r), "Client received messages");
+                    }
+                } finally {
+                    foreach (var c in clients) c.Dispose();
                 }
-
-                // Wait for all the clients to get connected up, so that
-                // they all get broadcast to.
-                while (server.Clients.Count() < clientCount) await Task.Delay(1000);
-                await Task.Delay(1000);
-
-                List<Task> tasks = new List<Task>();
-                
-                // Send loads of messages from the clients to the server.
-                foreach (var c in clients) tasks.Add(c.Exercise());
-                // Broadcast loads of messages from the server to the clients.
-                tasks.Add(server.Exercise());
-
-                // Wait until all the messages have been sent.
-                await Task.WhenAll(tasks);
-
-                // Wait for the last few messages to be received and processed.
-                await Task.Delay(2000);
-
-                foreach (var c in clients) {
-                    // Check the client didn't drop out of listening mode due to an exception.
-                    Assert.IsTrue(c.Mode == Client.Modes.Listening);
-                    // Check the correct number of messages were received.
-                    Assert.AreEqual(clientMsgCount, server.GetRecMessages(c.Ident).Count(), "Server received messages");
-                    Assert.AreEqual(serverMsgCount, c.GetRecMessages().Count(), "Client {0} received messages", c.Ident);
-                    // Check the correct messages were received at both ends in the correct order.
-                    Assert.IsFalse(server.GetRecMessages(c.Ident).Zip(c.GetSentMessages(), (sm, rm) => sm == rm).Any(r => !r), "Server received messages");
-                    Assert.IsFalse(c.GetRecMessages().Zip(server.GetSentMessages(), (sm, rm) => sm == rm).Any(r => !r), "Client received messages");
-                }
-
-                foreach (var c in clients) c.Dispose();
             }
         }
 
+#if DEVICE
+        [Test]
+#else
         [TestMethod]
+#endif
+        [Timeout(60000)]
         public void TransferFiles() {
-            var sendFiles = new List<RandomFile>(Enumerable.Range(1, 10).Select(i => new RandomFile(5.Megs())));
+            var sendFiles = new List<RandomFile>(Enumerable.Range(1, isDevice ? 5 : 10)
+                .Select(i => new RandomFile(isDevice ? 1.Megs() : 5.Megs())));
             var recFiles = new List<string>();
 
             using (Server server = new Server(9000)) 
@@ -217,7 +295,11 @@ namespace SockLibUnitTests {
             foreach (var f in recFiles) File.Delete(f);
         }
 
+#if DEVICE
+        [Test]
+#else
         [TestMethod]
+#endif
         public void AutoHandle() {
             using (Server server = new Server(9000))
             using (Client client = new Client("localhost", 9000)) {

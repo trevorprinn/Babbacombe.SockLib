@@ -29,11 +29,27 @@ using System.Threading.Tasks;
 
 namespace Babbacombe.SockLib {
 
+    /// <summary>
+    /// The header of a received message.
+    /// </summary>
     public sealed class RecMessageHeader {
-        public MessageTypes Type { get; private set; }
-        public string Id { get; private set; }
-        public string Command { get; private set; }
-        public bool IsEmpty { get; private set; }
+        /// <summary>
+        /// Gets the message type identifier.
+        /// </summary>
+        public char MessageType { get; }
+        /// <summary>
+        /// Gets the Id sent in the message.
+        /// </summary>
+        public string Id { get; }
+        /// <summary>
+        /// Gets the Command sent in the message.
+        /// </summary>
+        public string Command { get; }
+        /// <summary>
+        /// True if no message has been received. This either signals the end of a data stream
+        /// or means that the other end has disconnected.
+        /// </summary>
+        internal bool IsEmpty { get; }
         
         private RecMessageHeader() { }
 
@@ -48,7 +64,7 @@ namespace Babbacombe.SockLib {
 			} catch (IOException) { }
             IsEmpty = string.IsNullOrEmpty(line1);
             if (IsEmpty) return;
-            Type = getMessageType(line1[0]);
+            MessageType = line1[0];
             if (line1.Length > 1) Id = line1.Substring(1);
             Command = readLine(stream);
         }
@@ -63,11 +79,6 @@ namespace Babbacombe.SockLib {
             if (ch < 0) return null;
             while (line.Length > 0 && line[line.Length - 1] == '\r') line.Length--;
             return line.ToString();
-        }
-
-        private MessageTypes getMessageType(char t) {
-            if (!"TSUXBFMPC".Contains(t)) throw new UnknownMessageTypeException(t);
-            return ((MessageTypes[])Enum.GetValues(typeof(MessageTypes))).Single(mt => mt.ToString()[0] == t);
         }
     }
 }

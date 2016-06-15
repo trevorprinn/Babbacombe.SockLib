@@ -59,6 +59,20 @@ namespace Babbacombe.SockLib {
         private NetworkStream _netStream;
         private bool _busySending;
 
+        private static readonly Lazy<bool> isRunningOnMonoValue = new Lazy<bool>(() =>
+        {
+            return Type.GetType("Mono.Runtime") != null;
+        });
+
+        private static bool isRunningOnMono => isRunningOnMonoValue.Value;
+
+        private static readonly Lazy<bool> isRunningOnLinuxValue = new Lazy<bool>(() => {
+            int p = (int)Environment.OSVersion.Platform;
+            return (p == 4) || (p == 6) || (p == 128);
+        });
+
+        private static bool isRunningOnLinux => isRunningOnLinuxValue.Value;
+
         /// <summary>
         /// Whether to raise an exception automatically when a Status message is received as the reply in a Transaction.
         /// Defaults to False.
@@ -407,7 +421,7 @@ namespace Babbacombe.SockLib {
                                 break;
                             }
                             var msg = RecMessage.Create(header, clientStream);
-                            if (msg.Type == MessageTypes.Ping) {
+                            if (msg is RecPingMessage) {
                                 if (!((RecPingMessage)msg).IsReply) {
                                     // Send a ping reply
                                     SendMessage(new SendPingMessage(true));
@@ -460,16 +474,55 @@ namespace Babbacombe.SockLib {
 
         /// <summary>
         /// Gets whether the connection is currently open.
+        /// NB On iOS this just returns whether the connection was previously open, as it is unable to
+        /// determine whether the connection is still established.
         /// </summary>
         public bool IsOpen {
             get {
                 if (_client == null) return false;
-                var state = IPGlobalProperties.GetIPGlobalProperties()
-                    .GetActiveTcpConnections()
-                    .SingleOrDefault(x => x.LocalEndPoint.Equals(_client.Client.LocalEndPoint));
-                if (state.State == TcpState.Established) return true;
+#if __IOS__
+                // Can't check the connection on iOS, as far as I know, so this is the best way to check for now.
+                // In future, perhaps send a small packet to test it.
+                if (_client.Client.Connected) return true;
                 Close();
                 return false;
+#else
+#if ANDROID
+                var connections = new DroidIPGlobalProperties().GetActiveTcpConnections();
+#else
+                var connections = IPGlobalProperties.GetIPGlobalProperties().GetActiveTcpConnections();
+#endif
+                var state = connections
+                    .SingleOrDefault(x => x.LocalEndPoint.Equals(_client.Client.LocalEndPoint));
+                if (correctedTcpState(state.State) == TcpState.Established) return true;
+                Close();
+                return false;
+#endif
+            }
+        }
+
+        /// <summary>
+        /// The states that mono returns on linux are incorrect.
+        /// https://bugzilla.xamarin.com/show_bug.cgi?id=15098
+        /// http://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/tree/include/net/tcp_states.h?id=HEAD
+        /// </summary>
+        /// <param name="origState"></param>
+        /// <returns></returns>
+        private TcpState correctedTcpState(TcpState origState) {
+            if (!(isRunningOnMono && isRunningOnLinux)) return origState;
+            switch ((int)origState) {
+                case 1: return TcpState.Established;
+                case 2: return TcpState.SynSent;
+                case 3: return TcpState.SynReceived;
+                case 4: return TcpState.FinWait1;
+                case 5: return TcpState.FinWait2;
+                case 6: return TcpState.TimeWait;
+                case 7: return TcpState.Closed;
+                case 8: return TcpState.CloseWait;
+                case 9: return TcpState.LastAck;
+                case 10: return TcpState.Listen;
+                case 11: return TcpState.Closing;
+                default: return TcpState.Unknown;
             }
         }
 
@@ -483,6 +536,10 @@ namespace Babbacombe.SockLib {
     public class ClientModeException : ApplicationException {
         private ClientModeException() { }
 
+        /// <summary>
+        /// Constructs a ClientModeException
+        /// </summary>
+        /// <param name="inListeningMode"></param>
         public ClientModeException(bool inListeningMode)
             : base(inListeningMode ? "Cannot run a transaction while in Listening mode" : "Cannot send a bare message in Transaction mode") { }
     }
@@ -493,21 +550,26 @@ namespace Babbacombe.SockLib {
     [Serializable]
     public class StatusException : ApplicationException {
         private StatusException() { }
-        public RecStatusMessage StatusMessage { get; private set; }
+        
+        /// <summary>
+        /// The status message sent by the server
+        /// </summary>
+        public RecStatusMessage StatusMessage { get; }
 
-        public StatusException(RecStatusMessage statusMessage) {
+        internal StatusException(RecStatusMessage statusMessage) {
             StatusMessage = statusMessage;
         }
 
-        public override string Message {
-            get {
-                return StatusMessage.StatusMessage;
-            }
-        }
+        /// <summary>
+        /// The text of the status message sent by the server.
+        /// </summary>
+        public override string Message => StatusMessage.StatusMessage;
 
-        public override string ToString() {
-            return string.Format("{0} {1}", StatusMessage.Status, base.ToString());
-        }
+        /// <summary>
+        /// The text of the status message followed by the full exception.
+        /// </summary>
+        /// <returns></returns>
+        public override string ToString() => string.Format("{0} {1}", StatusMessage.Status, base.ToString());
     }
 
     /// <summary>
@@ -584,6 +646,9 @@ namespace Babbacombe.SockLib {
     /// </summary>
     [Serializable]
     public class ServerClosedException : ApplicationException {
+        /// <summary>
+        /// Creates a Server Closed Exception.
+        /// </summary>
         public ServerClosedException() { }
     }
 }

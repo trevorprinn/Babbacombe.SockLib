@@ -160,16 +160,20 @@ namespace Babbacombe.SockLib {
         private void listen() {
             while (!_stop) {
                 if (_listener.Pending()) {
-                    ThreadPool.QueueUserWorkItem((c) => {
-                        // Run each client connection on its own thread.
-                        handleClient((TcpClient)c);
-                    }, _listener.AcceptTcpClient());
+                    var ct = new Thread(new ParameterizedThreadStart(handleClient));
+                    ct.IsBackground = true;
+                    ct.Name = "Server Client thread";
+                    ct.Start(_listener.AcceptTcpClient());
                 }
                 Thread.Sleep(100);
             }
             _listener.Stop();
             _listener = null;
             _listenThread = null;
+        }
+
+        private void handleClient(object c) {
+            handleClient((TcpClient)c);
         }
 
         private void handleClient(TcpClient c) {
@@ -188,7 +192,7 @@ namespace Babbacombe.SockLib {
                         RecMessageHeader header;
                         SendMessage reply = null;
                         using (var recStream = new DelimitedStream(client.Client.GetStream(), overrun)) {
-							if (recStream.Delimiter == null) break;
+                            if (recStream.Delimiter == null) break;
                             // Wait until a message is received.
                             header = new RecMessageHeader(recStream);
                             if (header.IsEmpty) break; // The stream has ended so the client is disconnected.
@@ -216,6 +220,8 @@ namespace Babbacombe.SockLib {
                             client.SendMessage(reply);
                         }
                     } while (true);
+                } catch (SocketClosedException) {
+                    // The client has disconnected
                 } finally {
                     lock (_clients) {
                         _clients.Remove(client);
@@ -289,6 +295,10 @@ namespace Babbacombe.SockLib {
             GC.SuppressFinalize(this);
         }
 
+        /// <summary>
+        /// Shuts down the server.
+        /// </summary>
+        /// <param name="disposing"></param>
         protected virtual void Dispose(bool disposing) {
             if (_listenThread != null) {
                 _stop = true;

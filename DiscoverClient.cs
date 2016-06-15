@@ -34,7 +34,8 @@ namespace Babbacombe.SockLib {
     /// A UDP client that can be used to find a SockLib server.
     /// </summary>
     public class DiscoverClient {
-        private IPEndPoint _broadcast;
+
+        private int _port;
 
         /// <summary>
         /// Gets or Sets the send and receive timeouts when finding the service, in millisecs.
@@ -46,25 +47,29 @@ namespace Babbacombe.SockLib {
         /// </summary>
         /// <param name="port">The UDP port to use for the search.</param>
         public DiscoverClient(int port) {
-            _broadcast = new IPEndPoint(IPAddress.Broadcast, port);
+            _port = port;
             Timeout = 5000;
         }
 
         /// <summary>
-        /// Broadcasts a request for a reply from a discovery server.
+        /// Looks for an advertisement from a discovery server.
         /// </summary>
         /// <param name="serviceName">The name of the service the discovery server supports.</param>
         /// <returns>The end point of the service, or null if no server was found.</returns>
         public IPEndPoint FindService(string serviceName) {
+            var start = DateTime.Now;
             try {
-                using (var client = new UdpClient()) {
-                    client.Client.SendTimeout = Timeout;
+                using (var client = new UdpClient(_port)) {
                     client.Client.ReceiveTimeout = Timeout;
-                    var name = Encoding.UTF8.GetBytes(serviceName);
-                    client.Send(name, name.Length, _broadcast);
-                    IPEndPoint rep = null;
-                    var msg = client.Receive(ref rep);
-                    return getEp(msg, rep, serviceName);
+                    do {
+                        if (DateTime.Now.Subtract(start).TotalMilliseconds > Timeout) return null;
+                        IPEndPoint rep = null;
+                        var msg = client.Receive(ref rep);
+                        if (msg == null) return null; // Timed out
+
+                        var serviceEp = getEp(msg, rep, serviceName);
+                        if (serviceEp != null) return serviceEp;
+                    } while (true);
                 }
             } catch (SocketException) {
                 return null;
@@ -72,21 +77,22 @@ namespace Babbacombe.SockLib {
         }
 
         /// <summary>
-        /// Broadcasts a request for a reply from a discovery server.
+        /// Looks for an advertisment from a discovery server.
         /// </summary>
         /// <param name="serviceName">The name of the service the discovery server supports.</param>
         /// <returns>The end point of the service, or null if no server was found.</returns>
         public async Task<IPEndPoint> FindServiceAsync(string serviceName) {
-            using (var client = new UdpClient()) {
-                var cts = new CancellationTokenSource(Timeout);
-                await client.SendAsync(Encoding.UTF8.GetBytes(serviceName), _broadcast, cts.Token);
-                if (cts.IsCancellationRequested) return null;
+            var start = DateTime.Now;
+            using (var client = new UdpClient(_port)) {
+                do {
+                    if (DateTime.Now.Subtract(start).TotalMilliseconds > Timeout) return null;
+                    var cts = new CancellationTokenSource(Timeout);
+                    var msg = await client.ReceiveAsync(cts.Token);
+                    if (msg == null) return null; // Timed out
 
-                cts = new CancellationTokenSource(Timeout);
-                var msg = await client.ReceiveAsync(cts.Token);
-                if (msg == null) return null; // Timed out
-
-                return getEp(msg.Value.Buffer, msg.Value.RemoteEndPoint, serviceName);
+                    var serviceEp = getEp(msg.Value.Buffer, msg.Value.RemoteEndPoint, serviceName);
+                    if (serviceEp != null) return serviceEp;
+                } while (true);
             }
         }
 
