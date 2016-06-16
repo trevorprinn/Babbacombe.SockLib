@@ -38,7 +38,7 @@ namespace Babbacombe.SockLib {
         }
 
         void _pingTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e) {
-            if (!_active || !ClientIsOpen) return;
+            if (!_active) return;
             if (Busy) {
                 _stopwatch.Restart();
             } else {
@@ -59,7 +59,8 @@ namespace Babbacombe.SockLib {
 
         public void Start() {
             if (_active) return;
-            _stopwatch.Reset();
+            _active = true;
+            _stopwatch.Restart();
             _pingTimer.Start();
             _checkTimer.Start();
         }
@@ -108,10 +109,14 @@ namespace Babbacombe.SockLib {
     }
 
     internal class ClientPingManager : PingManager {
+        public const int DefaultPingInterval = 500;
+
+        public const int DefaultPingTimeout = 2000;
+
         public Client Client { get; private set; }
 
         public ClientPingManager(Client client)
-            : base(500, 2000) {
+            : base(DefaultPingInterval, DefaultPingTimeout) {
                 Client = client;
         }
 
@@ -119,16 +124,33 @@ namespace Babbacombe.SockLib {
             Client.SendMessage(new SendPingMessage(false));
         }
 
-        protected override bool ClientIsOpen {
-            get { return Client.IsOpen; }
+        protected override bool ClientIsOpen => Client.IsOpen;
+        
+        protected override void PingTimedOut() {
+            Client.PingTimedOut();
         }
+
+        protected override bool Busy => Client.Busy;
+    }
+
+    internal class ServerPingManager : PingManager {
+        public ServerClient Client;
+
+        public ServerPingManager(ServerClient client, int pingInterval, int pingTimeout) : base(pingInterval, pingTimeout) {
+            Client = client;
+        }
+
+        protected override void SendPing() {
+            Client.SendMessage(new SendPingMessage(false));
+        }
+
+        protected override bool ClientIsOpen => true;
 
         protected override void PingTimedOut() {
             Client.PingTimedOut();
         }
 
-        protected override bool Busy {
-            get { return Client.Busy; }
-        }
+        protected override bool Busy => Client.Busy;
     }
+
 }

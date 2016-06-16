@@ -363,13 +363,16 @@ namespace Babbacombe.SockLib {
         public void SendMessage(SendMessage message) {
             // Send a ping message regardless of the mode
             if (_mode != Modes.Listening && !(message is SendPingMessage)) throw new ClientModeException(false);
-            if (!IsOpen) throw new NotOpenException();
+            if (!IsOpen) {
+                OnConnectionLost();
+                return;
+            }
             lock (this) {
                 _busySending = true;
                 try {
                     message.Send(_netStream);
                 } finally {
-                    _pingManager.Reset();
+                    if (!(message is SendPingMessage)) _pingManager.Reset();
                     _busySending = false;
                 }
             }
@@ -392,6 +395,18 @@ namespace Babbacombe.SockLib {
             }
         }
 
+        public bool SendPings { get; set; } = true;
+
+        public int PingInterval {
+            get { return _pingManager.PingInterval; }
+            set { _pingManager.PingInterval = value; }
+        }
+
+        public int PingTimeout {
+            get { return _pingManager.PingTimeout; }
+            set { _pingManager.PingTimeout = value; }
+        }
+
         private void startListening() {
             if (_listeningThread != null) return;
             _listeningThread = new Thread(new ThreadStart(listen));
@@ -405,6 +420,8 @@ namespace Babbacombe.SockLib {
         private void listen() {
             byte[] overrun = null;
             try {
+                if (SendPings) _pingManager.Start();
+                SendMessage(new SendClientModeMessage(true, _pingManager));
                 do {
                     if (_client == null) break;
                     if ((overrun == null || overrun.Length == 0) && _client.Available <= 0) {
@@ -427,18 +444,20 @@ namespace Babbacombe.SockLib {
                                     SendMessage(new SendPingMessage(true));
                                 }
                             } else if (!CallHandler(msg)) {
-                                OnMessageReceived(RecMessage.Create(header, clientStream));
+                                OnMessageReceived(msg);
                             }
                             overrun = clientStream.GetOverrun();
                         }
                         _pingManager.Reset();
                     }
                 } while (!_stopListening);
+                SendMessage(new SendClientModeMessage(false));
             } catch (SocketClosedException ex) {
                 LastException = ex;
                 Close();
                 OnServerClosed();
             } finally {
+                _pingManager.Stop();
                 ListenBusy = false;
                 _listeningThread = null;
             }
@@ -494,7 +513,7 @@ namespace Babbacombe.SockLib {
 #endif
                 var state = connections
                     .SingleOrDefault(x => x.LocalEndPoint.Equals(_client.Client.LocalEndPoint));
-                if (correctedTcpState(state.State) == TcpState.Established) return true;
+                if (state != null && correctedTcpState(state.State) == TcpState.Established) return true;
                 Close();
                 return false;
 #endif

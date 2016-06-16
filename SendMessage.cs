@@ -128,11 +128,9 @@ namespace Babbacombe.SockLib {
         public SendClientModeMessage(bool listening, PingManager pm = null) {
             Command = "ClientMode" + (listening && pm != null ? "LY" : listening ? "LN" : "TN");
             if (listening && pm != null) {
-                Text = string.Format("{0}\n{1}", pm.PingInterval, pm.PingTimeout);
+                Text = $"{pm.PingInterval}\n{pm.PingTimeout}";
             }
         }
-
-        protected override void SendData(Stream stream) { }
     }
 
     /// <summary>

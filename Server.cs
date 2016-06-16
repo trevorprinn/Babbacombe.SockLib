@@ -153,6 +153,7 @@ namespace Babbacombe.SockLib {
 
             _listener = new TcpListener(address);
             _listenThread = new Thread(new ThreadStart(listen));
+            _listenThread.IsBackground = true;
             _listener.Start();
             _listenThread.Start();
         }
@@ -191,13 +192,24 @@ namespace Babbacombe.SockLib {
                         RecMessage msg;
                         RecMessageHeader header;
                         SendMessage reply = null;
+                        client.ResetPing();
+                        client.Busy = false;
                         using (var recStream = new DelimitedStream(client.Client.GetStream(), overrun)) {
                             if (recStream.Delimiter == null) break;
                             // Wait until a message is received.
                             header = new RecMessageHeader(recStream);
                             if (header.IsEmpty) break; // The stream has ended so the client is disconnected.
+                            client.Busy = true;
                             msg = RecMessage.Create(header, recStream);
-                            if (Handlers.HasHandler(msg.Command)) {
+                            if (msg is RecPingMessage) {
+                                var m = (RecPingMessage)msg;
+                                if (!m.IsReply) {
+                                    reply = new SendPingMessage(true);
+                                }
+                            } else if (msg is RecClientModeMessage) {
+                                var m = (RecClientModeMessage)msg;
+                                client.SetListeningMode(m.IsListening, m.PingInterval, m.PingTimeout);
+                            } else if (Handlers.HasHandler(msg.Command)) {
                                 // There's a handler for this command, so call it.
                                 reply = Handlers.Invoke(msg.Command, client, msg);
                             } else {

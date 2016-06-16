@@ -147,7 +147,7 @@ namespace SockLibUnitTests {
 #else
         [TestMethod]
 #endif
-        public void SimpleListen() {
+        public async Task SimpleListen() {
             using (Server server = new Server(9000))
             using (Client client = new Client("localhost", 9000, Client.Modes.Listening)) {
                 server.Handlers.Add<RecTextMessage>("Test", echoTextDelayed);
@@ -159,7 +159,8 @@ namespace SockLibUnitTests {
                 };
 
                 client.SendMessage(new SendTextMessage("Test"));
-                Thread.Sleep(4000);
+                await Task.Delay(4000);
+                Assert.IsTrue(client.IsOpen, "Client is closed");
                 Assert.AreEqual(1, msgCount);
             }
         }
@@ -174,6 +175,7 @@ namespace SockLibUnitTests {
                 server.Handlers.Add<RecTextMessage>("Test", echoTextDelayed);
 
                 using (Client client = new Client("localhost", 9000, Client.Modes.Listening)) {
+                    client.SendPings = false;
                     client.Open();
                     Thread.Sleep(500);
                     Assert.AreEqual(1, server.Clients.Count());
@@ -186,8 +188,11 @@ namespace SockLibUnitTests {
         }
 
         private SendMessage echoTextDelayed(ServerClient c, RecTextMessage r) {
-            Thread.Sleep(3000);
-            return new SendTextMessage(r.Command, r.Text);
+            Task.Run(async () => {
+                await Task.Delay(3000);
+                c.SendMessage(new SendTextMessage(r.Command, r.Text));
+            });
+            return null;
         }
 
         /// <summary>

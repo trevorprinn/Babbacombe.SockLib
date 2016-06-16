@@ -48,6 +48,31 @@ namespace Babbacombe.SockLib {
         /// </summary>
         protected internal TcpClient Client { get; internal set; }
 
+        private ServerPingManager _pingManager;
+        
+        public bool InListeningMode { get; private set; }
+
+        internal void SetListeningMode(bool isListening, int pingInterval, int pingTimeout) {
+            InListeningMode = isListening;
+            bool pinging = pingInterval > 0;
+            if (pinging && _pingManager == null) {
+                _pingManager = new ServerPingManager(this, pingInterval, pingTimeout);
+                _pingManager.Start();
+            } else if (pinging) {
+                _pingManager.Stop();
+                _pingManager.PingInterval = pingInterval;
+                _pingManager.PingTimeout = pingTimeout;
+                _pingManager.Start();
+            } else if (_pingManager != null) {
+                _pingManager.Dispose();
+                _pingManager = null;
+            }
+        }
+
+        internal void ResetPing() {
+            if (_pingManager != null) _pingManager.Reset();
+        }
+
         /// <summary>
         /// Raised when the ServerClient object has been created and connected to the server, just before it
         /// is added to the Server's Clients collection.
@@ -73,10 +98,16 @@ namespace Babbacombe.SockLib {
         /// Shuts down any remaining connection to the client app, and closes the socket.
         /// </summary>
         protected virtual void Dispose(bool disposing) {
-            if (Client != null) {
-                if (Client.Connected) Client.GetStream().Dispose();
-                Client.Close();
-                Client = null;
+            if (disposing) {
+                if (_pingManager != null) {
+                    _pingManager.Dispose();
+                    _pingManager = null;
+                }
+                if (Client != null) {
+                    try { if (Client.Connected) Client.GetStream().Dispose(); } catch { }
+                    try { Client.Close(); } catch { }
+                    Client = null;
+                }
             }
         }
 
@@ -89,5 +120,11 @@ namespace Babbacombe.SockLib {
                 message.Send(Client.GetStream());
             }
         }
+
+        internal void PingTimedOut() {
+            Client.Close();
+        }
+
+        internal bool Busy { get; set; }
     }
 }
