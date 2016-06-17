@@ -49,7 +49,10 @@ namespace Babbacombe.SockLib {
         protected internal TcpClient Client { get; internal set; }
 
         private ServerPingManager _pingManager;
-        
+
+        /// <summary>
+        /// Gets whether the client is in listening mode (this is set at the client end).
+        /// </summary>
         public bool InListeningMode { get; private set; }
 
         internal void SetListeningMode(bool isListening, int pingInterval, int pingTimeout) {

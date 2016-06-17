@@ -350,10 +350,29 @@ namespace Babbacombe.SockLib {
             public virtual SendMessage Invoke(ServerClient client, RecMessage message) {
                 return Handler.Invoke(client, message);
             }
+            public virtual Task InvokeAsync(ServerClient client, RecMessage message) {
+                throw new NotImplementedException();
+            }
         }
         private class HandlerItem<T> : HandlerItem where T : RecMessage {
             public new ServerHandler<T> Handler { get; set; }
             public override SendMessage Invoke(ServerClient client, RecMessage message) {
+                return Handler.Invoke(client, (T)message);
+            }
+        }
+        private class AsyncHandlerItem : HandlerItem {
+            public new ServerHandlerAsync Handler { get; set; }
+            public override Task InvokeAsync(ServerClient client, RecMessage message) {
+                return Handler.Invoke(client, message);
+            }
+            public override SendMessage Invoke(ServerClient client, RecMessage message) {
+                throw new NotImplementedException();
+            }
+        }
+    
+        private class AsyncHandlerItem<T> : AsyncHandlerItem where T : RecMessage {
+            public new ServerHandlerAsync<T> Handler { get; set; }
+            public override Task InvokeAsync(ServerClient client, RecMessage message) {
                 return Handler.Invoke(client, (T)message);
             }
         }
@@ -380,10 +399,32 @@ namespace Babbacombe.SockLib {
             _handlers.Add(command, new HandlerItem<T> { Handler = handler });
         }
 
+        /// <summary>
+        /// Adds an async handler to the server.
+        /// </summary>
+        /// <param name="command">The command to handle.</param>
+        /// <param name="handler">The handler routine.</param>
+        public void AddAsync(string command, ServerHandlerAsync handler) {
+            _handlers.Add(command, new AsyncHandlerItem { Handler = handler });
+        }
+
+        /// <summary>
+        /// Adds a typed async handler to the server.
+        /// </summary>
+        /// <param name="command">The command to handle.</param>
+        /// <param name="handler">The handler routine.</param>
+        public void AddAsync<T>(string command, ServerHandlerAsync<T> handler) where T : RecMessage {
+            _handlers.Add(command, new AsyncHandlerItem<T> { Handler = handler });
+        }
+
         internal bool HasHandler(string command) { return _handlers.ContainsKey(command); }
 
         internal SendMessage Invoke(string command, ServerClient client, RecMessage message) {
             var item = _handlers[command];
+            if (item is AsyncHandlerItem) {
+                item.InvokeAsync(client, message);
+                return null;
+            }
             return item.Invoke(client, message);
         }
     }
@@ -404,4 +445,21 @@ namespace Babbacombe.SockLib {
     /// <param name="message">The message to process.</param>
     /// <returns>The reply to send, or null if no reply is to be sent (only use if the client is in Listening mode).</returns>
     public delegate SendMessage ServerHandler<T>(ServerClient client, T message) where T : RecMessage;
+
+    /// <summary>
+    /// The type of handlers for messages received from clients that are to be handled asynchronously.
+    /// </summary>
+    /// <param name="client">The client that sent the message.</param>
+    /// <param name="message">The message to process.</param>
+    /// <returns></returns>
+    public delegate Task ServerHandlerAsync(ServerClient client, RecMessage message);
+
+    /// <summary>
+    /// The type of handlers for messages received from clients that are to be handled asynchronously.
+    /// </summary>
+    /// <typeparam name="T">The type of message that will be received.</typeparam>
+    /// <param name="client">The client that sent the message.</param>
+    /// <param name="message">The message to process.</param>
+    /// <returns></returns>
+    public delegate Task ServerHandlerAsync<T>(ServerClient client, T message) where T : RecMessage;
 }

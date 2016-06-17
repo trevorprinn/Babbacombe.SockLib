@@ -258,6 +258,9 @@ namespace Babbacombe.SockLib {
             OnConnectionLost();
         }
 
+        /// <summary>
+        /// Raises the ConnectionLost event.
+        /// </summary>
         protected virtual void OnConnectionLost() {
             if (ConnectionLost != null) ConnectionLost(this, EventArgs.Empty);
         }
@@ -395,13 +398,26 @@ namespace Babbacombe.SockLib {
             }
         }
 
+        /// <summary>
+        /// Gets or sets whether to send pings when in listening mode. Defaults to true.
+        /// This should be set before the connection is made and put into listening mode.
+        /// </summary>
         public bool SendPings { get; set; } = true;
 
+        /// <summary>
+        /// Gets or sets how often to send pings, in millisecs. Defaults to 500.
+        /// This should be set before the connection is made and put into listening mode.
+        /// </summary>
         public int PingInterval {
             get { return _pingManager.PingInterval; }
             set { _pingManager.PingInterval = value; }
         }
 
+        /// <summary>
+        /// Gets or sets how long to wait for a ping reply before assuming the connection has been lost, in millisecs.
+        /// Defaults to 2000.
+        /// This should be set before the connection is made and put into listening mode.
+        /// </summary>
         public int PingTimeout {
             get { return _pingManager.PingTimeout; }
             set { _pingManager.PingTimeout = value; }
@@ -608,6 +624,9 @@ namespace Babbacombe.SockLib {
             public virtual void Invoke(Client client, RecMessage message) {
                 Handler.Invoke(client, message);
             }
+            public virtual Task InvokeAsync(Client client, RecMessage message) {
+                throw new NotImplementedException();
+            }
         }
         private class HandlerItem<T> : HandlerItem where T : RecMessage {
             public new ClientHandler<T> Handler { get; set; }
@@ -615,6 +634,22 @@ namespace Babbacombe.SockLib {
                 Handler.Invoke(client, (T)message);
             }
         }
+        private class AsyncHandlerItem : HandlerItem {
+            public new ClientHandlerAsync Handler { get; set; }
+            public override void Invoke(Client client, RecMessage message) {
+                throw new NotImplementedException();
+            }
+            public override Task InvokeAsync(Client client, RecMessage message) {
+                return Handler.Invoke(client, message);
+            }
+        }
+        private class AsyncHandlerItem<T> : AsyncHandlerItem where T : RecMessage {
+            public new ClientHandlerAsync<T> Handler { get; set; }
+            public override Task InvokeAsync(Client client, RecMessage message) {
+                return Handler.Invoke(client, (T)message);
+            }
+        }
+
         private Dictionary<string, HandlerItem> _handlers = new Dictionary<string, HandlerItem>();
 
         /// <summary>
@@ -636,10 +671,33 @@ namespace Babbacombe.SockLib {
             _handlers.Add(command, new HandlerItem<T> { Handler = handler });
         }
 
+        /// <summary>
+        /// Adds a handler to the client to be run asynchronously.
+        /// </summary>
+        /// <param name="command">The command to handle.</param>
+        /// <param name="handler">The handler routine.</param>
+        public void AddAsync(string command, ClientHandlerAsync handler) {
+            _handlers.Add(command, new AsyncHandlerItem { Handler = handler });
+        }
+
+        /// <summary>
+        /// Adds a handler to the client to be run asynchronously.
+        /// </summary>
+        /// <typeparam name="T">The type of message expected from the server.</typeparam>
+        /// <param name="command">The command to handle.</param>
+        /// <param name="handler">The handler routine.</param>
+        public void AddAsync<T>(string command, ClientHandlerAsync<T> handler) where T : RecMessage {
+            _handlers.Add(command, new AsyncHandlerItem<T> { Handler = handler });
+        }
+
         internal bool HasHandler(string command) { return _handlers.ContainsKey(command); }
 
         internal void Invoke(string command, Client client, RecMessage message) {
             var item = _handlers[command];
+            if (item is AsyncHandlerItem) {
+                item.InvokeAsync(client, message);
+                return;
+            }
             item.Invoke(client, message);
         }
 
@@ -648,17 +706,34 @@ namespace Babbacombe.SockLib {
     /// <summary>
     /// The type of handlers for messages sent from the server.
     /// </summary>
-    /// <param name="client"></param>
-    /// <param name="message"></param>
+    /// <param name="client">The client that received the message.</param>
+    /// <param name="message">The message received from the server.</param>
     public delegate void ClientHandler(Client client, RecMessage message);
 
     /// <summary>
     /// The type of handers for messages sent from the server.
     /// </summary>
     /// <typeparam name="T">The type of message expected from the server for the command.</typeparam>
-    /// <param name="client"></param>
-    /// <param name="message"></param>
+    /// <param name="client">The client that received the message.</param>
+    /// <param name="message">The message received from the server.</param>
     public delegate void ClientHandler<T>(Client client, T message) where T : RecMessage;
+
+    /// <summary>
+    /// The type of handlers for messages sent from the server that are to be handled asynchronously.
+    /// </summary>
+    /// <param name="client">The client that received the message.</param>
+    /// <param name="message">The message received from the server.</param>
+    /// <returns></returns>
+    public delegate Task ClientHandlerAsync(Client client, RecMessage message);
+
+    /// <summary>
+    /// The type of handlers for messages sent from the server that are to be handled asynchronously.
+    /// </summary>
+    /// <typeparam name="T">The type of message expected from the server for the command.</typeparam>
+    /// <param name="client">The client that received the message.</param>
+    /// <param name="message">The message received from the server.</param>
+    /// <returns></returns>
+    public delegate Task ClientHandlerAsync<T>(Client client, T message) where T : RecMessage;
 
     /// <summary>
     /// Thrown if the server closes while the client is open.

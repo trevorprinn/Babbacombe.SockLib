@@ -150,7 +150,7 @@ namespace SockLibUnitTests {
         public async Task SimpleListen() {
             using (Server server = new Server(9000))
             using (Client client = new Client("localhost", 9000, Client.Modes.Listening)) {
-                server.Handlers.Add<RecTextMessage>("Test", echoTextDelayed);
+                server.Handlers.AddAsync<RecTextMessage>("Test", echoTextDelayed);
                 client.Open();
                 int msgCount = 0;
 
@@ -172,7 +172,7 @@ namespace SockLibUnitTests {
 #endif
         public void CloseClient() {
             using (Server server = new Server(9000)) {
-                server.Handlers.Add<RecTextMessage>("Test", echoTextDelayed);
+                server.Handlers.AddAsync<RecTextMessage>("Test", echoTextDelayed);
 
                 using (Client client = new Client("localhost", 9000, Client.Modes.Listening)) {
                     client.SendPings = false;
@@ -187,12 +187,9 @@ namespace SockLibUnitTests {
             }
         }
 
-        private SendMessage echoTextDelayed(ServerClient c, RecTextMessage r) {
-            Task.Run(async () => {
-                await Task.Delay(3000);
-                c.SendMessage(new SendTextMessage(r.Command, r.Text));
-            });
-            return null;
+        private async Task echoTextDelayed(ServerClient c, RecTextMessage r) {
+            await Task.Delay(3000);
+            c.SendMessage(new SendTextMessage(r.Command, r.Text));
         }
 
         /// <summary>
