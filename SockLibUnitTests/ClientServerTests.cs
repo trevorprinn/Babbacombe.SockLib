@@ -118,6 +118,49 @@ namespace SockLibUnitTests {
         }
 
         /// <summary>
+        /// Tests multiple clients sending multiple transactions ansyncronously to get back the correct replies.
+        /// </summary>
+#if DEVICE
+        [Test]
+#else
+        [TestMethod]
+#endif
+        [Timeout(60000)]
+        public void MultipleClientTextTransactionsAsync() {
+#if DEVICE
+            const int clientCount = 5;
+            const int transCount = 10;
+#else
+            const int clientCount = 25;
+            const int transCount = 25;
+#endif
+            using (Server server = new Server(9000)) {
+                server.Handlers.Add<RecTextMessage>("Test", echoText);
+
+                List<Client> clients = new List<Client>();
+                try {
+                    for (int i = 0; i < clientCount; i++) {
+                        var client = new Client("localhost", 9000);
+                        client.Open();
+                        clients.Add(client);
+                    }
+                    Parallel.ForEach(clients, client => {
+                        int cno = clients.IndexOf(client);
+                        Parallel.For(0, transCount, async tno => {
+                            string text = string.Format("Client: {0}, Transaction {1}", cno, tno);
+                            System.Diagnostics.Debug.WriteLine($"Send {text}");
+                            var reply = await client.TransactionAsync<RecTextMessage>(new SendTextMessage("Test", text));
+                            System.Diagnostics.Debug.WriteLine($"Repl {text}");
+                            Assert.AreEqual(text, reply.Text);
+                        });
+                    });
+                } finally {
+                    clients.ForEach(c => c.Dispose());
+                }
+            }
+        }
+
+        /// <summary>
         /// Tests that the client is closed when the server closes.
         /// This test currently fails on iOS because it is unable to determine whether the connection is established.
         /// </summary>

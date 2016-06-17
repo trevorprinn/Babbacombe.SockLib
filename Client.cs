@@ -345,7 +345,12 @@ namespace Babbacombe.SockLib {
         /// <returns>The reply from the server.</returns>
         public async Task<RecMessage> TransactionAsync(SendMessage message) {
             if (!IsOpen) throw new NotOpenException();
-            return await Task<RecMessage>.Run(() => Transaction(message));
+            var completion = new TaskCompletionSource<RecMessage>();
+            BeginTransaction(message, (r) => {
+                var reply = EndTransaction(r);
+                completion.SetResult(reply);
+            });
+            return await completion.Task;
         }
 
         /// <summary>
@@ -356,7 +361,12 @@ namespace Babbacombe.SockLib {
         /// <returns>The reply from the server.</returns>
         public async Task<T> TransactionAsync<T>(SendMessage message) where T : RecMessage {
             if (!IsOpen) throw new NotOpenException();
-            return await Task<T>.Run(() => Transaction<T>(message));
+            var completion = new TaskCompletionSource<T>();
+            BeginTransaction(message, (r) => {
+                var reply = EndTransaction<T>(r);
+                completion.SetResult(reply);
+            });
+            return await completion.Task;
         }
 
         /// <summary>
