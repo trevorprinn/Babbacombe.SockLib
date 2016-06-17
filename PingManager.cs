@@ -121,7 +121,9 @@ namespace Babbacombe.SockLib {
         }
 
         protected override void SendPing() {
-            Client.SendMessage(new SendPingMessage(false));
+            try {
+                Client.SendMessage(new SendPingMessage(false));
+            } catch { }
         }
 
         protected override bool ClientIsOpen => Client.IsOpen;
@@ -141,7 +143,9 @@ namespace Babbacombe.SockLib {
         }
 
         protected override void SendPing() {
-            Client.SendMessage(new SendPingMessage(false));
+            try {
+                Client.SendMessage(new SendPingMessage(false));
+            } catch { }
         }
 
         protected override bool ClientIsOpen => true;

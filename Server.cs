@@ -193,13 +193,13 @@ namespace Babbacombe.SockLib {
                         RecMessageHeader header;
                         SendMessage reply = null;
                         client.ResetPing();
-                        client.Busy = false;
+                        client.BusyReceiving = false;
                         using (var recStream = new DelimitedStream(client.Client.GetStream(), overrun)) {
                             if (recStream.Delimiter == null) break;
                             // Wait until a message is received.
                             header = new RecMessageHeader(recStream);
                             if (header.IsEmpty) break; // The stream has ended so the client is disconnected.
-                            client.Busy = true;
+                            client.BusyReceiving = true;
                             msg = RecMessage.Create(header, recStream);
                             if (msg is RecPingMessage) {
                                 var m = (RecPingMessage)msg;
@@ -331,7 +331,7 @@ namespace Babbacombe.SockLib {
         /// </remarks>
         public void Broadcast(SendMessage message, IEnumerable<ServerClient> clients = null) {
             lock (_clients) {
-                if (clients == null) clients = _clients;
+                if (clients == null) clients = _clients.Where(c => c.InListeningMode);
                 Parallel.ForEach(clients, c => {
                     if (_clients.Contains(c)) {
                         c.SendMessage(message);

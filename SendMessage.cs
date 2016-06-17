@@ -358,8 +358,8 @@ namespace Babbacombe.SockLib {
                 } else if (Stream != null) {
                     Stream.CopyTo(stream);
                 }
-            } catch (IOException) {
-                throw new SocketClosedException();
+            } catch (IOException ex) {
+                throw new SocketClosedException(ex);
             }
         }
     }

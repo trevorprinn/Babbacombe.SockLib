@@ -226,16 +226,23 @@ namespace Babbacombe.SockLib {
             return true;
         }
 
+        private bool _closing;
+
         /// <summary>
         /// Closes the connection to the server.
         /// </summary>
         public void Close() {
-            if (_client == null) return;
-            if (_listeningThread != null) _stopListening = true;
-            while (_listeningThread != null) Thread.Sleep(20);
-            _client.Close();
-            _netStream = null;
-            _client = null;
+            if (_client == null ||_closing) return;
+            _closing = true;
+            try {
+                if (_listeningThread != null) _stopListening = true;
+                while (_listeningThread != null) Thread.Sleep(20);
+                _client.Close();
+            } finally {
+                _netStream = null;
+                _client = null;
+                _closing = false;
+            }
         }
 
         /// <summary>
@@ -477,7 +484,7 @@ namespace Babbacombe.SockLib {
                         _pingManager.Reset();
                     }
                 } while (!_stopListening);
-                SendMessage(new SendClientModeMessage(false));
+                try { SendMessage(new SendClientModeMessage(false)); } catch { }
             } catch (SocketClosedException ex) {
                 LastException = ex;
                 Close();

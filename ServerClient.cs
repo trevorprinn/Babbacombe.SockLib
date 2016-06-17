@@ -120,7 +120,12 @@ namespace Babbacombe.SockLib {
         /// <param name="message"></param>
         public void SendMessage(SendMessage message) {
             lock (this) {
-                message.Send(Client.GetStream());
+                BusySending = true;
+                try {
+                    message.Send(Client.GetStream());
+                } finally {
+                    BusySending = false;
+                }
             }
         }
 
@@ -128,6 +133,10 @@ namespace Babbacombe.SockLib {
             Client.Close();
         }
 
-        internal bool Busy { get; set; }
+        internal bool Busy => BusySending || BusyReceiving;
+
+        internal bool BusySending { get; set; }
+
+        internal bool BusyReceiving { get; set; }
     }
 }
