@@ -234,9 +234,19 @@ namespace Babbacombe.SockLib {
         public void Close() {
             if (_client == null ||_closing) return;
             _closing = true;
+            _pingManager.Stop();
             try {
-                if (_listeningThread != null) _stopListening = true;
-                while (_listeningThread != null) Thread.Sleep(20);
+                if (_listeningThread != null) {
+                    _stopListening = true;
+                    if (Thread.CurrentThread.ManagedThreadId == _listeningThread.ManagedThreadId) {
+                        // Can't wait for it to end in this thread, because it won't
+                        Task.Run(() => {
+                            while (_listeningThread != null) Thread.Sleep(20);
+                        }).Wait();
+                    } else {
+                        while (_listeningThread != null) Thread.Sleep(20);
+                    }
+                }
                 _client.Close();
             } finally {
                 _netStream = null;
@@ -484,7 +494,9 @@ namespace Babbacombe.SockLib {
                         _pingManager.Reset();
                     }
                 } while (!_stopListening);
-                try { SendMessage(new SendClientModeMessage(false)); } catch { }
+                if (!_closing) {
+                    try { SendMessage(new SendClientModeMessage(false)); } catch { }
+                }
             } catch (SocketClosedException ex) {
                 LastException = ex;
                 Close();
