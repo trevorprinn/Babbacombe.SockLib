@@ -50,6 +50,7 @@ namespace Babbacombe.SockLib {
         public DelimitedStream(Stream stream, byte[] overrun = null) {
             _stream = stream;
             if (overrun != null && overrun.Any()) {
+                if (overrun.Length > BufferSize) throw new ApplicationException($"Overrun too long, {overrun.Length} bytes");
                 overrun.CopyTo(_buffer, 0);
                 _bufferCount = overrun.Length;
             }
@@ -146,7 +147,7 @@ namespace Babbacombe.SockLib {
             if (_pushBackBuffer.Any()) return _pushBackBuffer.Dequeue();
             if (_position >= _bufferCount) {
                 _position = 0;
-                _bufferCount = _stream.Read(_buffer, 0, 8192);
+                _bufferCount = _stream.Read(_buffer, 0, BufferSize);
                 if (_bufferCount == 0) return -1;
             }
             return _buffer[_position++];
