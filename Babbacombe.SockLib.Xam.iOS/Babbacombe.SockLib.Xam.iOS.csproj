@@ -66,6 +66,9 @@
     <Compile Include="..\MultipartManager.cs">
       <Link>MultipartManager.cs</Link>
     </Compile>
+    <Compile Include="..\PingManager.cs">
+      <Link>PingManager.cs</Link>
+    </Compile>
     <Compile Include="..\Properties\AssemblyInfo.cs">
       <Link>Properties\AssemblyInfo.cs</Link>
     </Compile>

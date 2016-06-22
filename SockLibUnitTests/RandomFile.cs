@@ -8,8 +8,8 @@ namespace SockLibUnitTests {
     public class RandomFile : IDisposable {
         private FileInfo _info;
 
-        public RandomFile(int length, string eof = null) {
-            _info = new FileInfo(Path.GetTempFileName());
+        public RandomFile(int length, string eof = null, string path = null) {
+            _info = new FileInfo(path ?? Path.GetTempFileName());
             int bufsize = 16 * 1024;
             byte[] buf = new byte[bufsize];
             var r = new Random();
@@ -41,7 +41,9 @@ namespace SockLibUnitTests {
                 do {
                     fb = fs.ReadByte();
                     int sb = other.ReadByte();
-                    if (fb != sb) return false;
+                    if (fb != sb) {
+                        return false;
+                    }
                 } while (fb >= 0);
             }
             return true;

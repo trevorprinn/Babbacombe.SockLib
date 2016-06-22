@@ -52,6 +52,9 @@
     <Compile Include="..\CustomMessageTable.cs">
       <Link>CustomMessageTable.cs</Link>
     </Compile>
+    <Compile Include="..\PingManager.cs">
+      <Link>PingManager.cs</Link>
+    </Compile>
     <Compile Include="IPGlobalProperties.cs" />
     <Compile Include="Resources\Resource.designer.cs" />
     <Compile Include="..\Client.cs">

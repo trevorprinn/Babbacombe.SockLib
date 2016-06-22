@@ -101,13 +101,15 @@ namespace SockLibUnitTests {
 #else
         [TestMethod]
 #endif
-        [Timeout(10000)]
+        [Timeout(20000)]
         public void BinaryMessage() {
-            byte[] bin = new byte[isDevice ? 10000 : 1000000];
+            byte[] bin = new byte[isDevice ? 2.Megs() : 10.Megs()];
             new Random().NextBytes(bin);
             var msg = new SendBinaryMessage("TestBin", bin);
             var reply = (RecBinaryMessage)TransferMessage(msg);
-            Assert.IsFalse(bin.Zip(reply.Data, (sb, rp) => sb == rp).Any(r => false));
+            var recbin = reply.Data;
+            Assert.IsTrue(bin.Length == recbin.Length);
+            Assert.IsFalse(bin.Zip(recbin, (sb, rp) => sb == rp).Any(r => false));
             reply.Stream.Dispose();
         }
 
@@ -118,7 +120,7 @@ namespace SockLibUnitTests {
 #endif
         [Timeout(60000)]
         public void BinaryMessageStream() {
-            using (var f = new RandomFile(isDevice ? 1.Megs() : 10.Megs()))
+            using (var f = new RandomFile(isDevice ? 2.Megs() : 10.Megs()))
             using (var fs = f.GetStream()) {
                 var msg = new SendBinaryMessage("TestBinStream", fs);
                 var reply = (RecBinaryMessage)TransferMessage(msg);
@@ -126,7 +128,7 @@ namespace SockLibUnitTests {
                 reply.Stream.Dispose();
             }
 
-            using (var f = new RandomFile(isDevice ? 1.Megs() : 10.Megs(), "\r\n"))
+            using (var f = new RandomFile(isDevice ? 2.Megs() : 10.Megs(), "\r\n"))
             using (var fs = f.GetStream()) {
                 var msg = new SendBinaryMessage("TestBinStream", fs);
                 var reply = (RecBinaryMessage)TransferMessage(msg);
@@ -154,19 +156,20 @@ namespace SockLibUnitTests {
 #else
         [TestMethod]
 #endif
-        [Timeout(120000)]
+        [Timeout(160000)]
         public void MultipartMessage() {
             var r = new Random();
             int fileCount = isDevice ? 5 : 10;
             int binCount = isDevice ? 2 : 5;
-            var files = Enumerable.Range(1, fileCount).Select(i => new RandomFile(r.Next(isDevice ? 1.Megs() : 10.Megs()), i % 2 == 0 ? "\r\n" : null)).ToArray();
+            var files = Enumerable.Range(1, fileCount).Select(i => new RandomFile(r.Next(isDevice ? 2.Megs() : 10.Megs()), i % 2 == 0 ? "\r\n" : null)).ToArray();
             var bins = Enumerable.Range(1, binCount).Select(i => {
-                var buf = new byte[r.Next(isDevice ? 1.Megs() : 10.Megs())];
+                var buf = new byte[r.Next(isDevice ? 2.Megs() : 10.Megs())];
                 r.NextBytes(buf);
                 return new { Name = Path.GetRandomFileName(), Data = buf };
             }).ToArray();
             List<SendMultipartMessage.BaseItem> items = new List<SendMultipartMessage.BaseItem>(files.Select(f => new SendMultipartMessage.FileItem(f.Name)));
             foreach (var bin in bins) items.Insert(r.Next(items.Count + 1), new SendMultipartMessage.BinaryItem(bin.Name, bin.Data));
+            items.Shuffle();
             var msg = new SendMultipartMessage("TestMp", items);
             var reply = (RecMultipartMessage)TransferMessage(msg, true);
             try {
@@ -181,7 +184,7 @@ namespace SockLibUnitTests {
                     int rcount;
                     do {
                         rcount = e.Contents.Read(buf, 0, buflen);
-                        Assert.IsFalse(bin.Data.Skip(pos).Zip(buf.Take(rcount), (b1, b2) => b1 == b2).Any(res => false));
+                        Assert.IsFalse(bin.Data.Skip(pos).Take(rcount).Zip(buf.Take(rcount), (b1, b2) => b1 == b2).Any(res => false));
                         pos += rcount;
                     } while (rcount > 0);
                     bcount++;

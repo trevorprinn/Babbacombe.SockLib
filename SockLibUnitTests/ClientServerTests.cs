@@ -45,7 +45,7 @@ namespace SockLibUnitTests {
                 Assert.IsTrue(client.IsOpen, "IsOpen");
 
                 Thread.Sleep(500);
-                Assert.AreEqual(1, server.Clients.Count());
+                Assert.AreEqual(1, server.Clients.Count(), "Should be one client open");
 
                 var reply = client.Transaction(new SendTextMessage("Test", "abcde"));
 #if DEVICE
@@ -60,7 +60,7 @@ namespace SockLibUnitTests {
                 Assert.IsFalse(client.IsOpen, "ClientClosed");
 
                 Thread.Sleep(100);
-                Assert.AreEqual(0, server.Clients.Count());
+                Assert.AreEqual(0, server.Clients.Count(), "Should be no server clients open");
             }
         }
 
@@ -146,13 +146,14 @@ namespace SockLibUnitTests {
                     }
                     Parallel.ForEach(clients, client => {
                         int cno = clients.IndexOf(client);
-                        Parallel.For(0, transCount, async tno => {
+                        var tasks = Enumerable.Range(0, transCount).Select(async tno => {
                             string text = string.Format("Client: {0}, Transaction {1}", cno, tno);
                             System.Diagnostics.Debug.WriteLine($"Send {text}");
                             var reply = await client.TransactionAsync<RecTextMessage>(new SendTextMessage("Test", text));
                             System.Diagnostics.Debug.WriteLine($"Repl {text}");
-                            Assert.AreEqual(text, reply.Text);
-                        });
+                            Assert.AreEqual(text, reply?.Text);
+                        }).ToArray();
+                        Task.WaitAll(tasks);
                     });
                 } finally {
                     clients.ForEach(c => c.Dispose());
@@ -190,6 +191,7 @@ namespace SockLibUnitTests {
 #else
         [TestMethod]
 #endif
+        [Timeout(10000)]
         public async Task SimpleListen() {
             using (Server server = new Server(9000))
             using (Client client = new Client("localhost", 9000, Client.Modes.Listening)) {
@@ -307,37 +309,78 @@ namespace SockLibUnitTests {
 #else
         [TestMethod]
 #endif
-        [Timeout(60000)]
+        [Timeout(90000)]
         public void TransferFiles() {
-            var sendFiles = new List<RandomFile>(Enumerable.Range(1, isDevice ? 5 : 10)
-                .Select(i => new RandomFile(isDevice ? 1.Megs() : 5.Megs())));
+#if ANDROID
+            var filePath = "/storage/emulated/0/Android/data/Socklib.Android.UnitTests.Socklib.Android.UnitTests";
+#endif
+            var sendFiles = new List<RandomFile>(Enumerable.Range(1, isDevice ? 3 : 10)
+                .Select(i => new RandomFile(isDevice ? 2.Megs() : 5.Megs(), null,
+#if ANDROID
+                Path.Combine(filePath, $"File{i}.dat")
+#else
+                null
+#endif
+                )));
             var recFiles = new List<string>();
 
-            using (Server server = new Server(9000)) 
+            using (Server server = new Server(9000))
             using (Client client = new Client("localhost", 9000)) {
-                client.Open();
+                Assert.IsTrue(client.Open());
 
                 server.Handlers.Add("GetNames", (c, m) => {
                     return new SendFilenamesMessage("Files", sendFiles.Select(f => f.Name));
                 });
 
-                var namesReply = (RecFilenamesMessage)client.Transaction(new SendTextMessage("GetNames"));
-                var mpReply = (RecMultipartMessage)client.Transaction(new SendFilenamesMessage("GetFiles", namesReply.Filenames));
+                var namesReply = client.Transaction<RecFilenamesMessage>(new SendTextMessage("GetNames"));
+                var mpReply = client.Transaction<RecMultipartMessage>(new SendFilenamesMessage("GetFiles", namesReply.Filenames));
                 mpReply.Manager.FileUploaded += (s, e) => {
+#if ANDROID
+                    string fname = Path.Combine(filePath, $"Rec{Path.GetFileName(e.Info.Filename)}");
+#else
                     string fname = Path.GetTempFileName();
+#endif
                     recFiles.Add(fname);
                     using (var fs = new FileStream(fname, FileMode.Create, FileAccess.Write)) {
                         e.Contents.CopyTo(fs);
-                    } 
+                    }
                 };
                 mpReply.Manager.Process();
+
+                Assert.AreEqual(sendFiles.Count, recFiles.Count);
+                bool eq = sendFiles.Zip(recFiles, (sf, rf) => sf.IsEqual(rf)).All(r => r);
+                Assert.IsTrue(eq);
+
+                if (eq) {
+                    foreach (var f in sendFiles.ToArray()) f.Dispose();
+                    foreach (var f in recFiles) File.Delete(f);
+                }
             }
+        }
 
-            Assert.AreEqual(sendFiles.Count, recFiles.Count);
-            Assert.IsTrue(sendFiles.Zip(recFiles, (sf, rf) => sf.IsEqual(rf)).All(r => r));
+#if DEVICE
+        [Test]
+#else
+        [TestMethod]
+#endif
+        [Timeout(60000)]
+        public void TransferBinary() {
+            using (Server server = new Server(9000))
+            using (Client client = new Client("localhost", 9000)) {
+                Assert.IsTrue(client.Open());
+                var sendbuffer = new byte[5.Megs()];
+                var rand = new Random();
+                rand.NextBytes(sendbuffer);
 
-            foreach (var f in sendFiles.ToArray()) f.Dispose();
-            foreach (var f in recFiles) File.Delete(f);
+                server.Handlers.Add("GetData", (c, m) => {
+                    return new SendBinaryMessage("Data", sendbuffer);
+                });
+
+                var reply = client.Transaction<RecBinaryMessage>(new SendTextMessage("GetData"));
+                var recBuffer = reply.Data;
+                Assert.AreEqual(sendbuffer.Length, recBuffer.Length);
+                Assert.IsTrue(sendbuffer.Zip(recBuffer, (s, r) => s == r).All(r => r));
+            }
         }
 
 #if DEVICE
