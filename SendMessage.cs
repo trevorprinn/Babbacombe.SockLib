@@ -58,6 +58,8 @@ namespace Babbacombe.SockLib {
         /// <param name="stream"></param>
         protected abstract void SendData(Stream stream);
 
+        protected const int CopyToBufSize = 8 * 1024;
+
 #if TEST
         public void Send(Stream stream) {
 #else
@@ -353,10 +355,10 @@ namespace Babbacombe.SockLib {
             try {
                 if (Data != null) {
                     using (var mem = new MemoryStream(Data)) {
-                        mem.CopyTo(stream);
+                        mem.CopyTo(stream, CopyToBufSize);
                     }
                 } else if (Stream != null) {
-                    Stream.CopyTo(stream);
+                    Stream.CopyTo(stream, CopyToBufSize);
                 }
             } catch (IOException ex) {
                 throw new SocketClosedException(ex);
@@ -715,7 +717,7 @@ namespace Babbacombe.SockLib {
                     }
                     try {
                         if (datastream != null) {
-                            datastream.CopyTo(stream);
+                            datastream.CopyTo(stream, CopyToBufSize);
                             datastream.Dispose();
                         }
                     } catch (IOException) {

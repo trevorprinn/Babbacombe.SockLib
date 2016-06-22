@@ -25,6 +25,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Babbacombe.SockLib {
@@ -42,7 +43,7 @@ namespace Babbacombe.SockLib {
         private Queue<int> _pushBackBuffer = new Queue<int>();
         // Buffer for handling bytes that have been read past but need to be processed
         private Queue<byte> _outerPushbackBuffer = new Queue<byte>();
-        private const int BufferSize = 8192;
+        private const int BufferSize = 8 * 1024;
         private byte[] _buffer = new byte[BufferSize];
         private int _position;
         private int _bufferCount;
@@ -59,6 +60,8 @@ namespace Babbacombe.SockLib {
                     Delimiter = readLine(true);
                 } while (Delimiter != null && Delimiter == "");
             } catch (IOException) {
+                Delimiter = null;
+            } catch (ObjectDisposedException) {
                 Delimiter = null;
             }
         }

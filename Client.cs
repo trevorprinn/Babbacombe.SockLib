@@ -240,8 +240,8 @@ namespace Babbacombe.SockLib {
                     _stopListening = true;
                     if (Thread.CurrentThread.ManagedThreadId == _listeningThread.ManagedThreadId) {
                         // Can't wait for it to end in this thread, because it won't
-                        Task.Run(() => {
-                            while (_listeningThread != null) Thread.Sleep(20);
+                        Task.Run(async () => {
+                            while (_listeningThread != null) await Task.Delay(20);
                         }).Wait();
                     } else {
                         while (_listeningThread != null) Thread.Sleep(20);
