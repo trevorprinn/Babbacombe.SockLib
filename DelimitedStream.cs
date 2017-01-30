@@ -91,7 +91,26 @@ namespace Babbacombe.SockLib {
         public bool EndOfStream { get { return _endOfStream && !_pushBackBuffer.Any() && !_outerPushbackBuffer.Any(); } }
 
         public override int Read(byte[] buffer, int offset, int count) {
-            if (EndOfStream) return 0;
+            return readData(buffer, offset, count, false, CancellationToken.None).Value;
+        }
+
+        public async override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) {
+            return await readData(buffer, offset, count, true, cancellationToken).Task;
+        }
+
+        private struct TaskValue<T> {
+            public TaskValue(bool async, T value) {
+                Task = async ? new Task<T>(() => { return value; }) : null;
+                Value = value;
+            }
+            public Task<T> Task { get; private set; }
+            public T Value { get; private set; }
+        }
+
+        private TaskValue<int> readData(byte[] buffer, int offset, int count, bool async, CancellationToken cancelToken) {
+            if (EndOfStream) {
+                return new TaskValue<int>(async, 0);
+            }
 
             int bytesRead = 0;
 
@@ -102,10 +121,11 @@ namespace Babbacombe.SockLib {
             List<int> delimiterBuffer = new List<int>(100);
             int delimCount = 0; // Count of how many delimiter characters have been read and matched (not inc \r\n)
             while (bytesRead < count && !_endOfStream) {
-                int ch = readByte();
+                if (cancelToken.IsCancellationRequested) return new TaskValue<int>(async, -1);
+                int ch = readByte(async, cancelToken);
                 if (ch < 0) {
                     _endOfStream = true;
-                    return bytesRead;
+                    return new TaskValue<int>(async, bytesRead);
                 }
                 if (!_pushBackBuffer.Any() && (ch == '\n' || ch == '\r')) {
                     if (delimiterBuffer.Contains('\n')) {
@@ -129,7 +149,7 @@ namespace Babbacombe.SockLib {
                         if (delimCount == Delimiter.Length) {
                             // Found the delimiter
                             // Read to the end of the line
-                            do { ch = readByte(); } while (ch >= 0 && ch != '\n');
+                            do { ch = readByte(async, cancelToken); } while (!cancelToken.IsCancellationRequested && ch >= 0 && ch != '\n');
                             _endOfStream = true;
                             _pushBackBuffer.Clear();
                         }
@@ -142,15 +162,21 @@ namespace Babbacombe.SockLib {
                     buffer[offset + bytesRead++] = (byte)ch;
                 }
             }
-            return bytesRead;
+            return new TaskValue<int>(async, bytesRead);
         }
 
-        private int readByte() {
+        private int readByte(bool async, CancellationToken cancelToken) {
             if (EndOfStream) return -1;
             if (_pushBackBuffer.Any()) return _pushBackBuffer.Dequeue();
             if (_position >= _bufferCount) {
                 _position = 0;
-                _bufferCount = _stream.Read(_buffer, 0, BufferSize);
+                if (async) {
+                    var t = _stream.ReadAsync(_buffer, 0, BufferSize, cancelToken);
+                    t.Wait();
+                    _bufferCount = t.Result;
+                } else {
+                    _bufferCount = _stream.Read(_buffer, 0, BufferSize);
+                }
                 if (_bufferCount == 0) return -1;
             }
             return _buffer[_position++];
@@ -198,10 +224,10 @@ namespace Babbacombe.SockLib {
         private string readLine(bool readingDelimiter = false) {
             if (EndOfStream) return null;
             var buf = new StringBuilder();
-            int ch = readingDelimiter ? readByte() : ReadByte();
+            int ch = readingDelimiter ? readByte(false, CancellationToken.None) : ReadByte();
             while (ch >= 0 && ch != '\n') {
                 buf.Append((char)ch);
-                ch = readingDelimiter ? readByte() : ReadByte();
+                ch = readingDelimiter ? readByte(false, CancellationToken.None) : ReadByte();
             }
             if (ch < 0) _endOfStream = true;
             if (_endOfStream && buf.Length == 0) return null;
@@ -228,17 +254,6 @@ namespace Babbacombe.SockLib {
             set {
                 throw new NotSupportedException();
             }
-        }
-
-        /// <summary>
-        /// Not implemented, because it will cause threading errors.
-        /// </summary>
-        /// <param name="destination"></param>
-        /// <param name="bufferSize"></param>
-        /// <param name="cancellationToken"></param>
-        /// <returns></returns>
-        public override Task CopyToAsync(Stream destination, int bufferSize, System.Threading.CancellationToken cancellationToken) {
-            throw new NotImplementedException();
         }
 
         public override long Length {
