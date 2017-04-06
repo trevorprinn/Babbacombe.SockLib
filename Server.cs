@@ -26,6 +26,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -194,7 +195,8 @@ namespace Babbacombe.SockLib {
                         SendMessage reply = null;
                         client.ResetPing();
                         client.BusyReceiving = false;
-                        using (var recStream = new DelimitedStream(client.Client.GetStream(), overrun)) {
+                        byte[] cryptoHash = null;
+                        using (var recStream = new DelimitedStream(client.GetReadStream(), overrun)) {
                             if (recStream.Delimiter == null) break;
                             // Wait until a message is received.
                             header = new RecMessageHeader(recStream);
@@ -209,6 +211,10 @@ namespace Babbacombe.SockLib {
                             } else if (msg is RecClientModeMessage) {
                                 var m = (RecClientModeMessage)msg;
                                 client.SetListeningMode(m.IsListening, m.PingInterval, m.PingTimeout);
+                            } else if (msg is RecCryptoCheckMessage) {
+                                reply = new SendCryptoCheckMessage(SupportsCrypto);
+                            } else if (msg is RecCryptoKeyMessage) {
+                                reply = initCrypto(((RecCryptoKeyMessage)msg).PublicKey, out cryptoHash);
                             } else if (Handlers.HasHandler(msg.Command)) {
                                 // There's a handler for this command, so call it.
                                 reply = Handlers.Invoke(msg.Command, client, msg);
@@ -231,6 +237,10 @@ namespace Babbacombe.SockLib {
                             reply.Id = string.IsNullOrWhiteSpace(header.Id) ? Guid.NewGuid().ToString() : header.Id;
                             client.SendMessage(reply);
                         }
+                        if (cryptoHash != null) {
+                            System.Diagnostics.Debug.Assert(!overrun.Any());
+                            setupCryptoStreams(client, cryptoHash);
+                        }
                     } while (true);
                 } catch (SocketClosedException) {
                     // The client has disconnected
@@ -241,6 +251,25 @@ namespace Babbacombe.SockLib {
                     }
                 }
             }
+        }
+
+        private SendCryptoKeyMessage initCrypto(byte[] clientsKey, out byte[] cryptoHash) {
+            using (var dh = new ECDiffieHellmanCng()) {
+                // Generate a public key
+                dh.KeyDerivationFunction = ECDiffieHellmanKeyDerivationFunction.Hash;
+                dh.HashAlgorithm = CngAlgorithm.Sha512;
+                var pk = dh.PublicKey.ToByteArray();
+                // Get the SHA512 key to use for the encryption of the messages
+                cryptoHash = dh.DeriveKeyMaterial(CngKey.Import(clientsKey, CngKeyBlobFormat.EccPublicBlob));
+                // Send our public key to the client
+                return new SendCryptoKeyMessage(pk);
+            }
+        }
+
+        private void setupCryptoStreams(ServerClient client, byte[] hash) {
+            var cypher = new TribbleCipher.Tribble<SHA512>(hash, SHA512.Create());
+            client._cryptoReadStream = new CryptoStream(client.Client.GetStream(), cypher.CreateDecryptor());
+            client._cryptoWriteStream = new CryptoStream(client.Client.GetStream(), cypher.CreateEncryptor());
         }
 
         /// <summary>
@@ -339,6 +368,13 @@ namespace Babbacombe.SockLib {
                 });
             }
         }
+
+        public bool SupportsCrypto
+#if CRYPTO
+            => true;
+#else
+            => false;
+#endif
     }
 
     /// <summary>

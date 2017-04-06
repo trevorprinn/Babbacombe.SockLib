@@ -27,6 +27,7 @@ using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -56,7 +57,8 @@ namespace Babbacombe.SockLib {
         private TcpClient _client;
         private Modes _mode = Modes.Transaction;
         private bool _stopListening;
-        private NetworkStream _netStream;
+        private Stream _readStream;
+        private Stream _writeStream;
         private bool _busySending;
 
         private static readonly Lazy<bool> isRunningOnMonoValue = new Lazy<bool>(() =>
@@ -125,6 +127,8 @@ namespace Babbacombe.SockLib {
 
         private ClientPingManager _pingManager;
 
+        public bool UsingCrypto { get; private set; }
+
         /// <summary>
         /// Arguments for the MessageReceived event.
         /// </summary>
@@ -170,8 +174,8 @@ namespace Babbacombe.SockLib {
         /// <param name="host">The name or IP address of the server.</param>
         /// <param name="port">The port number of the server.</param>
         /// <param name="mode">The mode to start the connection in. Defaults to Transaction.</param>
-        public Client(string host, int port, Modes mode = Modes.Transaction)
-            : this(getHostAddress(host), port, mode) {
+        public Client(string host, int port, Modes mode = Modes.Transaction, bool useCrypto = false)
+            : this(getHostAddress(host), port, mode, useCrypto) {
                 _givenHost = host;
         }
 
@@ -181,19 +185,20 @@ namespace Babbacombe.SockLib {
         /// <param name="hostAddress">The address of the server.</param>
         /// <param name="port">The port number of the server.</param>
         /// <param name="mode">The mode to start the connection in. Defaults to Transaction.</param>
-        public Client(IPAddress hostAddress, int port, Modes mode = Modes.Transaction)
-            : this(new IPEndPoint(hostAddress, port), mode) { }
+        public Client(IPAddress hostAddress, int port, Modes mode = Modes.Transaction, bool useCrypto = false)
+            : this(new IPEndPoint(hostAddress, port), mode, useCrypto) { }
 
         /// <summary>
         /// Sets up (but does not open) a connection to the server.
         /// </summary>
         /// <param name="hostEp">The end point of the server.</param>
         /// <param name="mode">The mode to start the connection in. Defaults to Transaction.</param>
-        public Client(IPEndPoint hostEp, Modes mode = Modes.Transaction) {
+        public Client(IPEndPoint hostEp, Modes mode = Modes.Transaction, bool useCrypto = false) {
             Handlers = new ClientHandlers();
             HostEp = hostEp;
             Mode = mode;
             _trans = Transaction;
+            UsingCrypto = SupportsCrypto && useCrypto;
             _pingManager = new ClientPingManager(this);
         }
 
@@ -215,13 +220,15 @@ namespace Babbacombe.SockLib {
             try {
                 _client = new TcpClient();
                 _client.Connect(HostEp);
-                _netStream = _client.GetStream();
+                _readStream = _client.GetStream();
+                _writeStream = _client.GetStream();
             } catch (Exception ex) {
                 LastException = ex;
                 try { _client.Close(); } catch { }
                 _client = null;
                 return false;
             }
+            if (UsingCrypto) initCrypto();
             if (Mode == Modes.Listening) startListening();
             return true;
         }
@@ -249,9 +256,34 @@ namespace Babbacombe.SockLib {
                 }
                 _client.Close();
             } finally {
-                _netStream = null;
+                _readStream = null;
+                _writeStream = null;
                 _client = null;
                 _closing = false;
+            }
+        }
+
+        private void initCrypto() {
+            // Ask the server whether it supports Crypto
+            var check = Transaction<RecCryptoCheckMessage>(new SendCryptoCheckMessage());
+            if (!check.Supported) {
+                UsingCrypto = false;
+                return;
+            }
+
+            using (var dh = new ECDiffieHellmanCng()) {
+                // Generate a public key
+                dh.KeyDerivationFunction = ECDiffieHellmanKeyDerivationFunction.Hash;
+                dh.HashAlgorithm = CngAlgorithm.Sha512;
+                var pk = dh.PublicKey.ToByteArray();
+                // Send it to the server, and get the server's public key back.
+                var pkReply = Transaction<RecCryptoKeyMessage>(new SendCryptoKeyMessage(pk));
+                // Get the SHA512 key to use for the encryption of the messages
+                var hashKey = dh.DeriveKeyMaterial(CngKey.Import(pkReply.PublicKey, CngKeyBlobFormat.EccPublicBlob));
+
+                var cypher = new TribbleCipher.Tribble<SHA512>(hashKey, SHA512.Create());
+                _readStream = new CryptoStream(_readStream, cypher.CreateDecryptor());
+                _writeStream = new CryptoStream(_writeStream, cypher.CreateEncryptor());
             }
         }
 
@@ -323,8 +355,8 @@ namespace Babbacombe.SockLib {
             if (!IsOpen) throw new NotOpenException();
             lock (this) {
                 try {
-                    message.Send(_netStream);
-                    var recStream = new DelimitedStream(_netStream);
+                    message.Send(_writeStream);
+                    var recStream = new DelimitedStream(_readStream);
                     var header = new RecMessageHeader(recStream);
                     if (header.IsEmpty) {
                         Close();
@@ -396,7 +428,7 @@ namespace Babbacombe.SockLib {
             lock (this) {
                 _busySending = true;
                 try {
-                    message.Send(_netStream);
+                    message.Send(_writeStream);
                 } finally {
                     if (!(message is SendPingMessage)) _pingManager.Reset();
                     _busySending = false;
@@ -468,7 +500,7 @@ namespace Babbacombe.SockLib {
                         Thread.Sleep(20);
                     } else {
                         ListenBusy = true;
-                        using (var clientStream = new DelimitedStream(_netStream, overrun)) {
+                        using (var clientStream = new DelimitedStream(_readStream, overrun)) {
                             var header = new RecMessageHeader(clientStream);
                             if (header == null) {
                                 // This shouldn't happen.
@@ -587,6 +619,14 @@ namespace Babbacombe.SockLib {
         }
 
         internal bool Busy { get { return _busySending || ListenBusy; } }
+
+        public bool SupportsCrypto
+#if CRYPTO
+            => true;
+#else
+            => false;
+#endif
+
     }
 
     /// <summary>

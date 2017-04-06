@@ -68,4 +68,49 @@ namespace Babbacombe.SockLib {
 				TaskContinuationOptions.OnlyOnFaulted);
 		}
     }
+
+    static class DebugExtensions {
+        public static string ToLiteral(this string input, bool addQuotes = true) {
+            var literal = new StringBuilder(input.Length + 2);
+            if (addQuotes) literal.Append("\"");
+            foreach (var c in input) {
+                switch (c) {
+                    case '\'': literal.Append(@"\'"); break;
+                    case '\"': literal.Append("\\\""); break;
+                    case '\\': literal.Append(@"\\"); break;
+                    case '\0': literal.Append(@"\0"); break;
+                    case '\a': literal.Append(@"[bel]"); break;
+                    case '\b': literal.Append(@"\b"); break;
+                    case '\f': literal.Append(@"\f"); break;
+                    case '\n': literal.Append(@"\n"); break;
+                    case '\r': literal.Append(@"\r"); break;
+                    case '\t': literal.Append(@"\t"); break;
+                    case '\v': literal.Append(@"\v"); break;
+                    case '[': literal.Append(@"\["); break;
+                    case (char)2: literal.Append("[stx]"); break;
+                    case (char)3: literal.Append("[etx]"); break;
+                    case (char)0x7f: literal.Append("[del]"); break;
+                    default:
+                        if (c >= ' ' && c < (char)0x7f) {
+                            literal.Append(c);
+                        } else {
+                            literal.AppendFormat("[{0:x4}]", (ushort)c);
+                        }
+                        break;
+                }
+            }
+            if (addQuotes) literal.Append("\"");
+            return literal.ToString();
+        }
+
+        public static byte[] AsBytes(this string s) {
+            return s.ToCharArray().Select(c => (byte)c).ToArray();
+        }
+
+        public static string AsString(this IEnumerable<byte> bytes) {
+            return new string(bytes.Select(b => (char)b).ToArray());
+        }
+
+    }
+
 }

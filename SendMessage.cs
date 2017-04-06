@@ -24,9 +24,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net.Sockets;
+using System.Security.Cryptography;
 using System.Text;
-using System.Threading.Tasks;
 using System.Xml.Linq;
 
 namespace Babbacombe.SockLib {
@@ -133,6 +132,21 @@ namespace Babbacombe.SockLib {
                 Text = $"{pm.PingInterval}\n{pm.PingTimeout}";
             }
         }
+    }
+
+    internal class SendCryptoCheckMessage : SendTextMessage {
+        protected override char MessageType => '@';
+
+        public SendCryptoCheckMessage() : base("CryptoCheck") { }
+
+        public SendCryptoCheckMessage(bool supported) : base("CryptoCheck", supported ? "Y" : "N") { }
+    }
+
+    internal class SendCryptoKeyMessage : SendBinaryMessage {
+        protected override char MessageType => '@';
+
+        public SendCryptoKeyMessage(byte[] publicKey)
+            : base("CryptoKey", publicKey) { }
     }
 
     /// <summary>

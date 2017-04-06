@@ -88,6 +88,8 @@ namespace Babbacombe.SockLib {
         private static RecMessage getInternalMessage(RecMessageHeader header, Stream stream) {
             if (header.Command.StartsWith("Ping")) return new RecPingMessage(header, stream);
             if (header.Command.StartsWith("ClientMode")) return new RecClientModeMessage(header, stream);
+            if (header.Command.StartsWith("CryptoCheck")) return new RecCryptoCheckMessage(header, stream);
+            if (header.Command.StartsWith("CryptoKey")) return new RecCryptoKeyMessage(header, stream);
             throw new ApplicationException($"Unknown internal message type '{header.Command} received");
         }
 
@@ -137,6 +139,20 @@ namespace Babbacombe.SockLib {
         public int PingInterval { get { return SendPings ? Convert.ToInt32(Lines.First()) : 0; } }
 
         public int PingTimeout { get { return SendPings ? Convert.ToInt32(Lines.Skip(1).First()) : 0; } }
+    }
+
+    internal class RecCryptoCheckMessage : RecTextMessage {
+        internal RecCryptoCheckMessage(RecMessageHeader header, Stream stream)
+            : base(header, stream) { }
+
+        public bool Supported => Text == "Y";
+    }
+
+    internal class RecCryptoKeyMessage : RecBinaryMessage {
+        internal RecCryptoKeyMessage(RecMessageHeader header, Stream stream)
+            : base(header, stream) { }
+
+        public byte[] PublicKey => Data;
     }
 
     /// <summary>

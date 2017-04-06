@@ -24,6 +24,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -151,6 +152,7 @@ namespace Babbacombe.SockLib {
             if (_position >= _bufferCount) {
                 _position = 0;
                 _bufferCount = _stream.Read(_buffer, 0, BufferSize);
+                System.Diagnostics.Debug.WriteLineIf(_stream is CryptoStream, $"{Thread.CurrentThread.ManagedThreadId} {_buffer.Take(_bufferCount).AsString().ToLiteral()}");
                 if (_bufferCount == 0) return -1;
             }
             return _buffer[_position++];

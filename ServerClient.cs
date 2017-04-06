@@ -44,9 +44,13 @@ namespace Babbacombe.SockLib {
         public Server Server { get; internal set; }
 
         /// <summary>
-        /// Gets the underlying socket object.
+        /// Gets the underlying socket object. Do not use the GetStream method directly, as this
+        /// would bypass the Crypto function.
         /// </summary>
         protected internal TcpClient Client { get; internal set; }
+
+        internal Stream _cryptoReadStream { get; set; }
+        internal Stream _cryptoWriteStream { get; set; }
 
         private ServerPingManager _pingManager;
 
@@ -107,7 +111,8 @@ namespace Babbacombe.SockLib {
                     _pingManager = null;
                 }
                 if (Client != null) {
-                    try { if (Client.Connected) Client.GetStream().Dispose(); } catch { }
+                    try { if (Client.Connected) GetReadStream().Dispose(); } catch { }
+                    try { if (Client.Connected) GetWriteStream().Dispose(); } catch { }
                     try { Client.Close(); } catch { }
                     Client = null;
                 }
@@ -122,7 +127,7 @@ namespace Babbacombe.SockLib {
             lock (this) {
                 BusySending = true;
                 try {
-                    message.Send(Client.GetStream());
+                    message.Send(GetWriteStream());
                 } finally {
                     BusySending = false;
                 }
@@ -132,6 +137,10 @@ namespace Babbacombe.SockLib {
         internal void PingTimedOut() {
             Client.Close();
         }
+
+        internal Stream GetReadStream() => _cryptoReadStream ?? Client.GetStream();
+
+        internal Stream GetWriteStream() => _cryptoWriteStream ?? Client.GetStream();
 
         internal bool Busy => BusySending || BusyReceiving;
 
