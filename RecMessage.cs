@@ -145,7 +145,7 @@ namespace Babbacombe.SockLib {
     public class RecTextMessage : RecMessage {
         private byte[] _data;
 
-        internal RecTextMessage(RecMessageHeader header, Stream stream)
+        protected internal RecTextMessage(RecMessageHeader header, Stream stream)
             : base(header, stream) {
             List<byte> data = new List<byte>();
             var buf = new byte[8192];
@@ -178,7 +178,7 @@ namespace Babbacombe.SockLib {
     public class RecStatusMessage : RecTextMessage {
         private string _command;
 
-        internal RecStatusMessage(RecMessageHeader header, Stream stream) : base(header, stream) {
+        protected internal RecStatusMessage(RecMessageHeader header, Stream stream) : base(header, stream) {
             _command = header.Command;
         }
 
@@ -203,7 +203,7 @@ namespace Babbacombe.SockLib {
     /// A Unicode text message.
     /// </summary>
     public class RecUnicodeMessage : RecTextMessage {
-        internal RecUnicodeMessage(RecMessageHeader header, Stream stream) : base(header, stream) { }
+        protected internal RecUnicodeMessage(RecMessageHeader header, Stream stream) : base(header, stream) { }
 
         /// <summary>
         /// Defines the encoding used for the Text, which in this class is Unicode.
@@ -222,7 +222,7 @@ namespace Babbacombe.SockLib {
         /// </summary>
         public XDocument Document { get; }
 
-        internal RecXmlMessage(RecMessageHeader header, Stream stream)
+        protected internal RecXmlMessage(RecMessageHeader header, Stream stream)
             : base(header, stream) {
                 Document = XDocument.Parse(Text);
         }
@@ -242,7 +242,7 @@ namespace Babbacombe.SockLib {
         /// </remarks>
         public new Stream Stream { get { return base.Stream; } }
 
-        internal RecBinaryMessage(RecMessageHeader header, Stream stream) : base(header, stream) { }
+        protected internal RecBinaryMessage(RecMessageHeader header, Stream stream) : base(header, stream) { }
 
         /// <summary>
         /// Gets the data in the message.
@@ -276,7 +276,7 @@ namespace Babbacombe.SockLib {
         /// </summary>
         public string[] Filenames { get; }
 
-        internal RecFilenamesMessage(RecMessageHeader header, Stream stream)
+        protected internal RecFilenamesMessage(RecMessageHeader header, Stream stream)
             : base(header, stream) {
             Filenames = Lines.Select(f => 
                 f.Replace('\\', Path.DirectorySeparatorChar).Replace('/', Path.DirectorySeparatorChar)).ToArray();
@@ -302,7 +302,7 @@ namespace Babbacombe.SockLib {
     public class RecMultipartMessage : RecMessage {
         private MultipartManager _manager;
 
-        internal RecMultipartMessage(RecMessageHeader header, Stream stream)
+        protected internal RecMultipartMessage(RecMessageHeader header, Stream stream)
             : base(header, stream) {
         }
 
