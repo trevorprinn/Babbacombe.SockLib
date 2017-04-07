@@ -195,7 +195,9 @@ namespace Babbacombe.SockLib {
                         SendMessage reply = null;
                         client.ResetPing();
                         client.BusyReceiving = false;
+#if CRYPTO
                         byte[] cryptoHash = null;
+#endif
                         using (var recStream = new DelimitedStream(client.GetReadStream(), overrun)) {
                             if (recStream.Delimiter == null) break;
                             // Wait until a message is received.
@@ -211,10 +213,13 @@ namespace Babbacombe.SockLib {
                             } else if (msg is RecClientModeMessage) {
                                 var m = (RecClientModeMessage)msg;
                                 client.SetListeningMode(m.IsListening, m.PingInterval, m.PingTimeout);
+
                             } else if (msg is RecCryptoCheckMessage) {
                                 reply = new SendCryptoCheckMessage(SupportsCrypto);
+#if CRYPTO
                             } else if (msg is RecCryptoKeyMessage) {
                                 reply = initCrypto(((RecCryptoKeyMessage)msg).PublicKey, out cryptoHash);
+#endif
                             } else if (Handlers.HasHandler(msg.Command)) {
                                 // There's a handler for this command, so call it.
                                 reply = Handlers.Invoke(msg.Command, client, msg);
@@ -237,10 +242,12 @@ namespace Babbacombe.SockLib {
                             reply.Id = string.IsNullOrWhiteSpace(header.Id) ? Guid.NewGuid().ToString() : header.Id;
                             client.SendMessage(reply);
                         }
+#if CRYPTO
                         if (cryptoHash != null) {
                             System.Diagnostics.Debug.Assert(!overrun.Any());
                             setupCryptoStreams(client, cryptoHash);
                         }
+#endif
                     } while (true);
                 } catch (SocketClosedException) {
                     // The client has disconnected
@@ -253,6 +260,7 @@ namespace Babbacombe.SockLib {
             }
         }
 
+#if CRYPTO
         private SendCryptoKeyMessage initCrypto(byte[] clientsKey, out byte[] cryptoHash) {
             using (var dh = new ECDiffieHellmanCng()) {
                 // Generate a public key
@@ -271,6 +279,7 @@ namespace Babbacombe.SockLib {
             client._cryptoReadStream = new CryptoStream(client.Client.GetStream(), cypher.CreateDecryptor());
             client._cryptoWriteStream = new CryptoStream(client.Client.GetStream(), cypher.CreateEncryptor());
         }
+#endif
 
         /// <summary>
         /// Raises the ClientAdded event.

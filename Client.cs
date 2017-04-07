@@ -264,6 +264,7 @@ namespace Babbacombe.SockLib {
         }
 
         private void initCrypto() {
+#if CRYPTO
             // Ask the server whether it supports Crypto
             var check = Transaction<RecCryptoCheckMessage>(new SendCryptoCheckMessage());
             if (!check.Supported) {
@@ -285,6 +286,9 @@ namespace Babbacombe.SockLib {
                 _readStream = new CryptoStream(_readStream, cypher.CreateDecryptor());
                 _writeStream = new CryptoStream(_writeStream, cypher.CreateEncryptor());
             }
+#else
+            UsingCrypto = false;
+#endif
         }
 
         /// <summary>
