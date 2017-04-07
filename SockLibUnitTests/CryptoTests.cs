@@ -57,5 +57,15 @@ namespace SockLibUnitTests {
 
             return new SendTextMessage(r.Command, r.Text);
         }
+
+#if DEVICE
+        [Test]
+#else
+        [TestMethod]
+#endif
+        [Timeout(60000)]
+        public void CryptoTransferFiles() {
+            ClientServerTests.transferFiles(true);
+        }
     }
 }

@@ -20,7 +20,7 @@ namespace SockLibUnitTests {
 #endif
     public class ClientServerTests {
 
-        private bool isDevice
+        private static bool isDevice
 #if DEVICE
             => true;
 #else
@@ -311,6 +311,10 @@ namespace SockLibUnitTests {
 #endif
         [Timeout(90000)]
         public void TransferFiles() {
+            transferFiles();
+        }
+
+        internal static void transferFiles(bool encrypt = false) {
 #if ANDROID
             var filePath = "/storage/emulated/0/Android/data/Socklib.Android.UnitTests.Socklib.Android.UnitTests";
 #endif
@@ -325,8 +329,10 @@ namespace SockLibUnitTests {
             var recFiles = new List<string>();
 
             using (Server server = new Server(9000))
-            using (Client client = new Client("localhost", 9000)) {
+            using (Client client = new Client("localhost", 9000, Client.Modes.Transaction, encrypt)) {
                 Assert.IsTrue(client.Open());
+
+                if (encrypt) Assert.IsTrue(client.UsingCrypto, "Crypto should be true");
 
                 server.Handlers.Add("GetNames", (c, m) => {
                     return new SendFilenamesMessage("Files", sendFiles.Select(f => f.Name));
@@ -349,7 +355,7 @@ namespace SockLibUnitTests {
 
                 Assert.AreEqual(sendFiles.Count, recFiles.Count);
                 bool eq = sendFiles.Zip(recFiles, (sf, rf) => sf.IsEqual(rf)).All(r => r);
-                Assert.IsTrue(eq);
+                Assert.IsTrue(eq, "Not all files are equal");
 
                 if (eq) {
                     foreach (var f in sendFiles.ToArray()) f.Dispose();
