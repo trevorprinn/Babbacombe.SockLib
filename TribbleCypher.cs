@@ -1,4 +1,29 @@
-﻿using System;
+﻿#region Licence
+/*
+    Babbacombe SockLib
+    https://github.com/trevorprinn/SockLib
+    Copyright © 2017 Babbacombe Computers Ltd.
+
+    This class was provided under LGPL by Green Box Intelligence Ltd
+    https://github.com/Rushyo
+    
+    This library is free software; you can redistribute it and/or
+    modify it under the terms of the GNU Lesser General Public
+    License as published by the Free Software Foundation; either
+    version 2.1 of the License, or (at your option) any later version.
+
+    This library is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public
+    License along with this library; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
+    USA
+ */
+#endregion
+using System;
 using System.Linq;
 using System.Security.Cryptography;
 using Babbacombe.SockLib;
@@ -83,12 +108,10 @@ namespace TribbleCipher {
         public Int32 TransformBlock(Byte[] inputBuffer, Int32 inputOffset, Int32 inputCount, Byte[] outputBuffer, Int32 outputOffset) {
             Byte[] transformed = XOR(inputBuffer.Skip(inputOffset).Take(inputCount).ToArray());
             Array.Copy(transformed, 0, outputBuffer, outputOffset, inputCount);
-            System.Diagnostics.Debug.WriteLine($"{Thread.CurrentThread.ManagedThreadId} Transform: {inputBuffer.Skip(inputOffset).Take(inputCount).AsString().ToLiteral()} to {outputBuffer.Skip(outputOffset).Take(inputCount).AsString().ToLiteral()}");
             return inputCount;
         }
 
         public Byte[] TransformFinalBlock(Byte[] inputBuffer, Int32 inputOffset, Int32 inputCount) {
-            System.Diagnostics.Debug.WriteLine($"{Thread.CurrentThread.ManagedThreadId} FinalTransform: {inputCount}");
             return XOR(inputBuffer.Skip(inputOffset).Take(inputCount).ToArray());
         }
 

@@ -41,7 +41,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Client.cs" />
-    <Compile Include="CryptoReadStream.cs" />
+    <Compile Include="CryptoStream.cs" />
     <Compile Include="CustomMessageTable.cs" />
     <Compile Include="DelimitedStream.cs" />
     <Compile Include="DiscoverClient.cs" />

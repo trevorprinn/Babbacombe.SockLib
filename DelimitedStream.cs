@@ -152,7 +152,6 @@ namespace Babbacombe.SockLib {
             if (_position >= _bufferCount) {
                 _position = 0;
                 _bufferCount = _stream.Read(_buffer, 0, BufferSize);
-                System.Diagnostics.Debug.WriteLineIf(_stream is CryptoStream, $"{Thread.CurrentThread.ManagedThreadId} {_buffer.Take(_bufferCount).AsString().ToLiteral()}");
                 if (_bufferCount == 0) return -1;
             }
             return _buffer[_position++];
