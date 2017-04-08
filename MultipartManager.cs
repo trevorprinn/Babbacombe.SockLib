@@ -260,7 +260,7 @@ namespace Babbacombe.SockLib {
                             using (var m = new MemoryStream()) {
                                 reader.CopyTo(m);
                                 m.Seek(0, SeekOrigin.Begin);
-                                value = new string(Encoding.UTF8.GetChars(m.ToArray()));
+                                value = m.ToArray().ConvertToString();
                             }
                             _dataItems.Add(new DataItem(name, value));
                             OnDataReceived(headerData, name, value);

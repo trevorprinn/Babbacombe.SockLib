@@ -26,27 +26,31 @@ namespace SockLibUnitTests {
 #endif
         [Timeout(20000)]
         public void CryptoTextTransaction() {
-            using (Server server = new Server(9000))
-            using (Client client = new Client("localhost", 9000, Client.Modes.Transaction, true)) {
-                server.Handlers.Add<RecTextMessage>("Test", echoText);
+            var delimGen = SendMessage.DelimGen;
+            SendMessage.DelimGen = new RandomDelimGen();
+            try {
+                using (Server server = new Server(9000))
+                using (Client client = new Client("localhost", 9000, Client.Modes.Transaction, true)) {
+                    server.Handlers.Add<RecTextMessage>("Test", echoText);
 
-                SendMessage.DelimGen = new RandomDelimGen();
+                    Assert.IsTrue(client.UsingCrypto);
+                    client.Open();
+                    Assert.IsTrue(client.UsingCrypto);
 
-                Assert.IsTrue(client.UsingCrypto);
-                client.Open();
-                Assert.IsTrue(client.UsingCrypto);
-
-                var reply = client.Transaction(new SendTextMessage("Test", "abcde"));
+                    var reply = client.Transaction(new SendTextMessage("Test", "abcde"));
 #if DEVICE
                 Assert.That(reply, Is.InstanceOf<RecTextMessage>());
 #else
-                Assert.IsInstanceOfType(reply, typeof(RecTextMessage));
+                    Assert.IsInstanceOfType(reply, typeof(RecTextMessage));
 #endif
-                Assert.AreEqual("Test", reply.Command);
-                Assert.AreEqual("abcde", ((RecTextMessage)reply).Text);
+                    Assert.AreEqual("Test", reply.Command);
+                    Assert.AreEqual("abcde", ((RecTextMessage)reply).Text);
 
-                client.Close();
-                Assert.IsFalse(client.IsOpen, "ClientClosed");
+                    client.Close();
+                    Assert.IsFalse(client.IsOpen, "ClientClosed");
+                }
+            } finally {
+                SendMessage.DelimGen = delimGen;
             }
         }
 
@@ -67,8 +71,13 @@ namespace SockLibUnitTests {
 #endif
         [Timeout(60000)]
         public void CryptoTransferFiles() {
+            var delimGen = SendMessage.DelimGen;
             SendMessage.DelimGen = new RandomDelimGen();
-            ClientServerTests.transferFiles(true);
+            try {
+                ClientServerTests.transferFiles(true);
+            } finally {
+                SendMessage.DelimGen = delimGen;
+            }
         }
     }
 }

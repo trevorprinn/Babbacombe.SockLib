@@ -13,7 +13,7 @@ namespace Babbacombe.SockLib {
 
     public class DefaultDelimGen : IDelimGen {
         public byte[] MakeDelimiter() {
-            return Encoding.UTF8.GetBytes(new string('-', 29) + Guid.NewGuid().ToString());
+            return (new string('-', 29) + Guid.NewGuid().ToString()).ConvertToBytes();
         }
     }
 

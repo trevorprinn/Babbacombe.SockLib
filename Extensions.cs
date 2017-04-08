@@ -84,6 +84,12 @@ namespace Babbacombe.SockLib {
             return !values.Contains(@value);
         }
 
+        public static byte[] ConvertToBytes(this string s) {
+            return s.ToCharArray().Select(c => (byte)c).ToArray();
+        }
 
+        public static string ConvertToString(this IEnumerable<byte> bytes) {
+            return new string(bytes.Select(b => (char)b).ToArray());
+        }
     }
 }

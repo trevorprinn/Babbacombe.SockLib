@@ -79,13 +79,13 @@ namespace Babbacombe.SockLib {
                 stream.WriteByte(type);
 
                 if (!string.IsNullOrWhiteSpace(Id)) {
-                    var buf = Encoding.UTF8.GetBytes(Id);
+                    var buf = Id.ConvertToBytes();
                     stream.Write(buf, 0, buf.Length);
                 }
                 stream.WriteByte((byte)'\n');
 
                 if (!string.IsNullOrWhiteSpace(Command)) {
-                    var buf = Encoding.UTF8.GetBytes(Command);
+                    var buf = Command.ConvertToBytes();
                     stream.Write(buf, 0, buf.Length);
                 }
                 stream.WriteByte((byte)'\n');
@@ -757,7 +757,7 @@ namespace Babbacombe.SockLib {
             if (data == null) data = "";
             if (addEol) data = data + "\r\n";
             if (data == "") return;
-            var buf = Encoding.UTF8.GetBytes(data);
+            var buf = data.ConvertToBytes();
             try {
                 s.Write(buf, 0, buf.Length);
             } catch (IOException) {
