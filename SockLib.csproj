@@ -43,6 +43,7 @@
     <Compile Include="Client.cs" />
     <Compile Include="CryptoStream.cs" />
     <Compile Include="CustomMessageTable.cs" />
+    <Compile Include="DelimGen.cs" />
     <Compile Include="DelimitedStream.cs" />
     <Compile Include="DiscoverClient.cs" />
     <Compile Include="DiscoverServer.cs" />

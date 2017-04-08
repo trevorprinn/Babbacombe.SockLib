@@ -59,6 +59,11 @@ namespace Babbacombe.SockLib {
 
         protected const int CopyToBufSize = 8 * 1024;
 
+        /// <summary>
+        /// Object used to generate message delimiters.
+        /// </summary>
+        public static IDelimGen DelimGen { get; set; } = new DefaultDelimGen();
+
 #if TEST
         public void Send(Stream stream) {
 #else
@@ -66,7 +71,7 @@ namespace Babbacombe.SockLib {
 #endif
             bool inSendData = false;
             try {
-                var delim = Encoding.UTF8.GetBytes(new string('-', 29) + Guid.NewGuid().ToString());
+                var delim = DelimGen.MakeDelimiter();
                 stream.Write(delim, 0, delim.Length);
                 stream.WriteByte((byte)'\n');
 
@@ -718,9 +723,10 @@ namespace Babbacombe.SockLib {
         /// </summary>
         /// <param name="stream"></param>
         protected override void SendData(Stream stream) {
-            var delim = new string('-', 29) + Guid.NewGuid().ToString();
+            var delim = DelimGen.MakeDelimiter();
             foreach (var item in Items) {
-                sendString(stream, delim);
+                stream.Write(delim, 0, delim.Length);
+                sendString(stream, "");
                 sendString(stream, item.GetHeader());
 
                 if (item.DataIsStream) {
@@ -741,7 +747,8 @@ namespace Babbacombe.SockLib {
                     item.SendData(stream);
                 }
                 sendString(stream, null); // Send EOL before the terminating delimiter
-                sendString(stream, delim + "--");
+                stream.Write(delim, 0, delim.Length);
+                sendString(stream, "--");
             }
             stream.Flush();
         }

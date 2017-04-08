@@ -30,6 +30,8 @@ namespace SockLibUnitTests {
             using (Client client = new Client("localhost", 9000, Client.Modes.Transaction, true)) {
                 server.Handlers.Add<RecTextMessage>("Test", echoText);
 
+                SendMessage.DelimGen = new RandomDelimGen();
+
                 Assert.IsTrue(client.UsingCrypto);
                 client.Open();
                 Assert.IsTrue(client.UsingCrypto);
@@ -65,6 +67,7 @@ namespace SockLibUnitTests {
 #endif
         [Timeout(60000)]
         public void CryptoTransferFiles() {
+            SendMessage.DelimGen = new RandomDelimGen();
             ClientServerTests.transferFiles(true);
         }
     }
