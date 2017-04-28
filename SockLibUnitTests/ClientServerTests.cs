@@ -319,7 +319,7 @@ namespace SockLibUnitTests {
             var filePath = "/storage/emulated/0/Android/data/Socklib.Android.UnitTests.Socklib.Android.UnitTests";
 #endif
             var sendFiles = new List<RandomFile>(Enumerable.Range(1, isDevice ? 3 : 10)
-                .Select(i => new RandomFile(isDevice ? 2.Megs() : 5.Megs(), null,
+                .Select(i => new RandomFile(isDevice ? 2.Megs() : 5.Megs(), i % 2 == 0 ? "\r\n" : null,
 #if ANDROID
                 Path.Combine(filePath, $"File{i}.dat")
 #else
