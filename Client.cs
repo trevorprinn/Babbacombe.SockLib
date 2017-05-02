@@ -228,7 +228,15 @@ namespace Babbacombe.SockLib {
                 _client = null;
                 return false;
             }
-            if (UsingCrypto) initCrypto();
+            if (UsingCrypto) {
+                var mode = Mode;
+                Mode = Modes.Transaction;
+                try {
+                    initCrypto();
+                } finally {
+                    Mode = mode;
+                }
+            }
             if (Mode == Modes.Listening) startListening();
             return true;
         }

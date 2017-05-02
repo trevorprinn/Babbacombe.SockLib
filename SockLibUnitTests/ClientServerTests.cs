@@ -249,6 +249,10 @@ namespace SockLibUnitTests {
 #endif
         [Timeout(120000)]
         public async Task Listening() {
+            await listening();
+        }
+
+        internal static async Task listening(bool encrypt = false) { 
 #if DEVICE
             const int clientCount = 2;
             const int serverMsgCount = 2;
@@ -263,7 +267,9 @@ namespace SockLibUnitTests {
             using (var server = new TestListenServer(serverMsgCount)) {
                 try {
                     for (int i = 0; i < clientCount; i++) {
-                        clients.Add(new TestListenClient(i + 1, clientMsgCount));
+                        TestListenClient client;
+                        clients.Add((client = new TestListenClient(i + 1, clientMsgCount, encrypt)));
+                        if (encrypt) Assert.IsTrue(client.UsingCrypto, "Crypto should be true");
                     }
 
                     // Wait for all the clients to get connected up, so that
@@ -271,7 +277,7 @@ namespace SockLibUnitTests {
                     int cc;
                     while ((cc = server.Clients.Count()) < clientCount) {
                         System.Diagnostics.Debug.WriteLine($"server cc: {cc}");
-                        Thread.Sleep(1000);
+                        await Task.Delay(2000);
                     }
                     System.Diagnostics.Debug.WriteLine("Got all the clients");
 
@@ -286,7 +292,7 @@ namespace SockLibUnitTests {
                     await Task.WhenAll(tasks);
 
                     // Wait for the last few messages to be received and processed.
-                    await Task.Delay(2000);
+                    await Task.Delay(5000);
 
                     foreach (var c in clients) {
                         // Check the client didn't drop out of listening mode due to an exception.

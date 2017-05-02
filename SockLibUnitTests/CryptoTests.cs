@@ -79,5 +79,22 @@ namespace SockLibUnitTests {
                 SendMessage.DelimGen = delimGen;
             }
         }
+
+#if DEVICE
+        [Test]
+#else
+        [TestMethod]
+#endif
+        [Timeout(120000)]
+        public async Task CryptoListening() {
+            var delimGen = SendMessage.DelimGen;
+            SendMessage.DelimGen = new RandomDelimGen();
+            try {
+                await ClientServerTests.listening(true);
+            } finally {
+                SendMessage.DelimGen = delimGen;
+            }
+        }
+
     }
 }
