@@ -259,8 +259,8 @@ namespace SockLibUnitTests {
             const int clientMsgCount = 2;
 #else
             const int clientCount = 5;
-            const int serverMsgCount = 50;
-            const int clientMsgCount = 50;
+            const int serverMsgCount = 25;
+            const int clientMsgCount = 25;
 #endif
 
             var clients = new List<TestListenClient>();
@@ -290,7 +290,7 @@ namespace SockLibUnitTests {
                     tasks.Add(server.Exercise());
 
                     // Wait until all the messages have been sent.
-                    await Task.WhenAll(tasks);
+                    Task.WaitAll(tasks.ToArray());
 
                     // Wait for the last few messages to be received and processed.
                     await Task.Delay(5000);
