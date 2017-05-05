@@ -64,7 +64,7 @@ namespace Babbacombe.SockLib {
         /// <summary>
         /// The delimiter generator to use when sending messages. If null, SendMessage.DefaultDelimGen is used.
         /// </summary>
-        public IDelimGen DelimGen { get; set; }
+        public BaseDelimGen DelimGen { get; set; }
 
         private static readonly Lazy<bool> isRunningOnMonoValue = new Lazy<bool>(() =>
         {

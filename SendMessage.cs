@@ -62,10 +62,10 @@ namespace Babbacombe.SockLib {
         /// <summary>
         /// Object used to generate message delimiters, if not specified by the server or client.
         /// </summary>
-        public static IDelimGen DefaultDelimGen { get; set; } = new DefaultDelimGen();
+        public static BaseDelimGen DefaultDelimGen { get; set; } = new DefaultDelimGen();
 
 #if TEST
-        public void Send(Stream stream, IDelimGen delimGen) {
+        public void Send(Stream stream, BaseDelimGen delimGen) {
 #else
         internal void Send(Stream stream, IDelimGen delimGen) {
 #endif
