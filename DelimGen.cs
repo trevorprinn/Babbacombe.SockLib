@@ -20,10 +20,10 @@ namespace Babbacombe.SockLib {
     }
 
     /// <summary>
-    /// The default delimiter generator. Generates a delimiter of 29 dashes followed by a Guid.
+    /// A delimiter generator for use when debugging the messages. Generates a delimiter of 29 dashes followed by a Guid.
     /// This is easy to see when debugging or using something like wireshark.
     /// </summary>
-    public class DefaultDelimGen : BaseDelimGen {
+    public class DebugDelimGen : BaseDelimGen {
         public override byte[] MakeDelimiter() {
             return (new string('-', 29) + Guid.NewGuid().ToString()).ConvertToBytes();
         }
