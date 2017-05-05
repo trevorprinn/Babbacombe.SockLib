@@ -65,7 +65,7 @@ namespace SockLibUnitTests {
             } else {
                 s = new MemoryStream();
             }
-            msg.Send(s);
+            msg.Send(s, null);
             s.Seek(0, SeekOrigin.Begin);
             var ds = new DelimitedStream(s);
             var header = new RecMessageHeader(ds);
@@ -242,7 +242,7 @@ namespace SockLibUnitTests {
         public void MultipleTextMessages() {
             var msgs = Enumerable.Range(0, 20).Select(i => new SendTextMessage("Text", $"Message {i}")).ToList();
             var s = new MemoryStream();
-            foreach (var m in msgs) m.Send(s);
+            foreach (var m in msgs) m.Send(s, null);
             s.Seek(0, SeekOrigin.Begin);
             byte[] overrun = null;
             for (int i = 0; i < 20; i++) {

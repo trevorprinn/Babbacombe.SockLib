@@ -61,6 +61,11 @@ namespace Babbacombe.SockLib {
         private Stream _writeStream;
         private bool _busySending;
 
+        /// <summary>
+        /// The delimiter generator to use when sending messages. If null, SendMessage.DefaultDelimGen is used.
+        /// </summary>
+        public IDelimGen DelimGen { get; set; }
+
         private static readonly Lazy<bool> isRunningOnMonoValue = new Lazy<bool>(() =>
         {
             return Type.GetType("Mono.Runtime") != null;
@@ -367,7 +372,7 @@ namespace Babbacombe.SockLib {
             if (!IsOpen) throw new NotOpenException();
             lock (this) {
                 try {
-                    message.Send(_writeStream);
+                    message.Send(_writeStream, DelimGen);
                     var recStream = new DelimitedStream(_readStream);
                     var header = new RecMessageHeader(recStream);
                     if (header.IsEmpty) {
@@ -440,7 +445,7 @@ namespace Babbacombe.SockLib {
             lock (this) {
                 _busySending = true;
                 try {
-                    message.Send(_writeStream);
+                    message.Send(_writeStream, DelimGen);
                 } finally {
                     if (!(message is SendPingMessage)) _pingManager.Reset();
                     _busySending = false;

@@ -59,6 +59,11 @@ namespace Babbacombe.SockLib {
         /// </summary>
         public bool InListeningMode { get; private set; }
 
+        /// <summary>
+        /// The delimiter generator to use when sending messages. If null, Server.DelimGen or SendMessage.DefaultDelimGen is used.
+        /// </summary>
+        public IDelimGen DelimGen { get; set; }
+
         internal void SetListeningMode(bool isListening, int pingInterval, int pingTimeout) {
             InListeningMode = isListening;
             bool pinging = pingInterval > 0;
@@ -127,7 +132,7 @@ namespace Babbacombe.SockLib {
             lock (this) {
                 BusySending = true;
                 try {
-                    message.Send(GetWriteStream());
+                    message.Send(GetWriteStream(), DelimGen ?? Server.DelimGen);
                 } finally {
                     BusySending = false;
                 }

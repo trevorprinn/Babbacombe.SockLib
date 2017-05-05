@@ -265,6 +265,7 @@ namespace SockLibUnitTests {
 
             var clients = new List<TestListenClient>();
             using (var server = new TestListenServer(serverMsgCount)) {
+                if (encrypt) server.DelimGen = new RandomDelimGen();
                 try {
                     for (int i = 0; i < clientCount; i++) {
                         TestListenClient client;
@@ -337,6 +338,10 @@ namespace SockLibUnitTests {
             using (Server server = new Server(9000))
             using (Client client = new Client("localhost", 9000, Client.Modes.Transaction, encrypt)) {
                 Assert.IsTrue(client.Open());
+                if (encrypt) {
+                    server.DelimGen = new RandomDelimGen();
+                    client.DelimGen = new RandomDelimGen();
+                }
 
                 if (encrypt) Assert.IsTrue(client.UsingCrypto, "Crypto should be true");
 

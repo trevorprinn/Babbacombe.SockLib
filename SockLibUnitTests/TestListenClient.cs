@@ -25,6 +25,7 @@ namespace SockLibUnitTests {
 
         public TestListenClient(int ident, int msgCount, bool encrypt = false)
             : base("localhost", 9000, Modes.Listening, encrypt) {
+            if (encrypt) DelimGen = new RandomDelimGen();
             Ident = ident;
             if (!Open()) throw new ApplicationException("Client socket didn't open");
             var rnd = new Random();

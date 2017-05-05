@@ -126,6 +126,12 @@ namespace Babbacombe.SockLib {
         public ServerHandlers Handlers { get; private set; }
 
         /// <summary>
+        /// The default delimiter generator to use for sending messages. Can be overridden for a client
+        /// by setting ServerClient.DelimGen. If null, SendMessage.DefaultDelimGen is used.
+        /// </summary>
+        public IDelimGen DelimGen { get; set; }
+
+        /// <summary>
         /// Creates a server listening on localhost.
         /// </summary>
         /// <param name="port">The port number to listen on.</param>

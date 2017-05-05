@@ -60,18 +60,19 @@ namespace Babbacombe.SockLib {
         protected const int CopyToBufSize = 8 * 1024;
 
         /// <summary>
-        /// Object used to generate message delimiters.
+        /// Object used to generate message delimiters, if not specified by the server or client.
         /// </summary>
-        public static IDelimGen DelimGen { get; set; } = new DefaultDelimGen();
+        public static IDelimGen DefaultDelimGen { get; set; } = new DefaultDelimGen();
 
 #if TEST
-        public void Send(Stream stream) {
+        public void Send(Stream stream, IDelimGen delimGen) {
 #else
-        internal void Send(Stream stream) {
+        internal void Send(Stream stream, IDelimGen delimGen) {
 #endif
             bool inSendData = false;
+            if (delimGen == null) delimGen = DefaultDelimGen;
             try {
-                var delim = DelimGen.MakeDelimiter();
+                var delim = delimGen.MakeDelimiter();
                 stream.Write(delim, 0, delim.Length);
                 stream.WriteByte((byte)'\n');
 
@@ -723,7 +724,7 @@ namespace Babbacombe.SockLib {
         /// </summary>
         /// <param name="stream"></param>
         protected override void SendData(Stream stream) {
-            var delim = DelimGen.MakeDelimiter();
+            var delim = DefaultDelimGen.MakeDelimiter();
             foreach (var item in Items) {
                 stream.Write(delim, 0, delim.Length);
                 sendString(stream, "");
