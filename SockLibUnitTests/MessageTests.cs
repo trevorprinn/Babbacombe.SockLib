@@ -188,7 +188,7 @@ namespace SockLibUnitTests {
                         pos += rcount;
                     } while (rcount > 0);
                     bcount++;
-                    Assert.IsTrue(pos == bin.Data.Length);
+                    Assert.AreEqual(bin.Data.Length, pos, "Position");
                 };
                 man.FileUploaded += (s, e) => {
                     var file = files.Single(f => f.Name == e.Info.Filename);
