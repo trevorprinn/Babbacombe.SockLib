@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -42,6 +43,7 @@ namespace SockLibUnitTests {
                     fb = fs.ReadByte();
                     int sb = other.ReadByte();
                     if (fb != sb) {
+                        Assert.AreEqual(fb, sb, $"fb = {fb}, sb = {sb}");
                         return false;
                     }
                 } while (fb >= 0);

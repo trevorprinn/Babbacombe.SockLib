@@ -295,6 +295,11 @@ namespace SockLibUnitTests {
                     // Wait for the last few messages to be received and processed.
                     await Task.Delay(5000);
 
+                    var errorClients = clients.Where(c => c.GetRecMessages().Count() != serverMsgCount);
+                    if (errorClients.Any()) {
+                        System.Diagnostics.Debug.WriteLine($"Clients with incorrect msg counts: {string.Join(", ", errorClients.Select(c => $"[{c.Ident}, {c.GetRecMessages().Count()}]"))}");
+                    }
+
                     foreach (var c in clients) {
                         // Check the client didn't drop out of listening mode due to an exception.
                         Assert.IsTrue(c.Mode == Client.Modes.Listening);
@@ -326,7 +331,9 @@ namespace SockLibUnitTests {
             var filePath = "/storage/emulated/0/Android/data/Socklib.Android.UnitTests.Socklib.Android.UnitTests";
 #endif
             var sendFiles = new List<RandomFile>(Enumerable.Range(1, isDevice ? 3 : 10)
-                .Select(i => new RandomFile(isDevice ? 2.Megs() : 5.Megs(), i % 2 == 0 ? "\r\n" : null,
+                .Select(i => new RandomFile(isDevice ? 2.Megs() : 5.Megs(),
+                    // Send files with various different endings
+                    i % 4 == 0 ? "\r\n" : i % 4 == 1 ? "\r" : i % 4 == 2 ? "\n" : null,
 #if ANDROID
                 Path.Combine(filePath, $"File{i}.dat")
 #else

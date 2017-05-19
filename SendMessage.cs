@@ -727,7 +727,7 @@ namespace Babbacombe.SockLib {
             var delim = DefaultDelimGen.MakeDelimiter();
             foreach (var item in Items) {
                 stream.Write(delim, 0, delim.Length);
-                sendString(stream, "");
+                stream.WriteByte((byte)'\n');
                 sendString(stream, item.GetHeader());
 
                 if (item.DataIsStream) {
@@ -747,9 +747,10 @@ namespace Babbacombe.SockLib {
                 } else {
                     item.SendData(stream);
                 }
-                sendString(stream, null); // Send EOL before the terminating delimiter
+                stream.WriteByte((byte)'\n'); // Send LF before the terminating delimiter
                 stream.Write(delim, 0, delim.Length);
-                sendString(stream, "--");
+                sendString(stream, "--", false);
+                stream.WriteByte((byte)'\n');
             }
             stream.Flush();
         }

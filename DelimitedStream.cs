@@ -108,7 +108,7 @@ namespace Babbacombe.SockLib {
                     _endOfStream = true;
                     return bytesRead;
                 }
-                if (!_pushBackBuffer.Any() && (ch == '\n' || ch == '\r')) {
+                if (!_pushBackBuffer.Any() && (ch == '\n')) {
                     if (delimiterBuffer.Contains('\n')) {
                         // Found 2 new lines in a row.
                         pushback(delimiterBuffer, ch);
