@@ -235,14 +235,14 @@ namespace Babbacombe.SockLib {
             }
             if (UsingCrypto) {
                 var mode = Mode;
-                Mode = Modes.Transaction;
+                _mode = Modes.Transaction;
                 try {
                     initCrypto();
                 } finally {
-                    Mode = mode;
+                    _mode = mode;
                 }
             }
-            if (Mode == Modes.Listening) startListening();
+            if (_mode == Modes.Listening) startListening();
             return true;
         }
 
