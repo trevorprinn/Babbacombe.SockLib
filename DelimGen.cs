@@ -9,7 +9,7 @@ namespace Babbacombe.SockLib {
 
     /// <summary>
     /// Base class for classes that generate delimiters used to separate messages and items in messages.
-    /// Note that a delimiter must never include \r or \n characters.
+    /// Note that a delimiter must never include \n characters.
     /// </summary>
     public abstract class BaseDelimGen {
         /// <summary>
@@ -48,7 +48,7 @@ namespace Babbacombe.SockLib {
                 rng.GetBytes(adelim);
             }
             var delim = adelim.ToList();
-            delim.RemoveAll(b => b.In((byte)'\r', (byte)'\n'));
+            delim.RemoveAll(b => b == '\n');
             return delim.ToArray();
         }
     }
