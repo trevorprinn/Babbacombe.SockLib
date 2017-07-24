@@ -270,7 +270,11 @@ namespace SockLibUnitTests {
                     for (int i = 0; i < clientCount; i++) {
                         TestListenClient client;
                         clients.Add((client = new TestListenClient(i + 1, clientMsgCount, encrypt)));
+#if DEVICE
+                        if (encrypt) Assert.IsFalse(client.UsingCrypto, "Crypto should be false on devices");
+#else
                         if (encrypt) Assert.IsTrue(client.UsingCrypto, "Crypto should be true");
+#endif
                     }
 
                     // Wait for all the clients to get connected up, so that
@@ -350,7 +354,11 @@ namespace SockLibUnitTests {
                     client.DelimGen = new RandomDelimGen();
                 }
 
+#if DEVICE
+                if (encrypt) Assert.IsFalse(client.UsingCrypto, "Crypto should be false on devices");
+#else
                 if (encrypt) Assert.IsTrue(client.UsingCrypto, "Crypto should be true");
+#endif
 
                 server.Handlers.Add("GetNames", (c, m) => {
                     return new SendFilenamesMessage("Files", sendFiles.Select(f => f.Name));

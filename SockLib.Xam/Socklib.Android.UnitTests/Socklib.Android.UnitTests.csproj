@@ -67,6 +67,9 @@
     <Compile Include="..\..\SockLibUnitTests\ClientServerTests.cs">
       <Link>ClientServerTests.cs</Link>
     </Compile>
+    <Compile Include="..\..\SockLibUnitTests\CryptoTests.cs">
+      <Link>CryptoTests.cs</Link>
+    </Compile>
     <Compile Include="..\..\SockLibUnitTests\DiscoverTests.cs">
       <Link>DiscoverTests.cs</Link>
     </Compile>

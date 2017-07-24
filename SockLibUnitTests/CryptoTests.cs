@@ -32,9 +32,17 @@ namespace SockLibUnitTests {
                 server.DelimGen = new RandomDelimGen();
                 client.DelimGen = new RandomDelimGen();
 
-                Assert.IsTrue(client.UsingCrypto);
+#if DEVICE
+                Assert.IsFalse(client.UsingCrypto, "Crypto should be false for devices");
+#else
+                Assert.IsTrue(client.UsingCrypto, "Crypto should be true");
+#endif
                 client.Open();
-                Assert.IsTrue(client.UsingCrypto);
+#if DEVICE
+                Assert.IsFalse(client.UsingCrypto, "Crypto should be false for devices");
+#else
+                Assert.IsTrue(client.UsingCrypto, "Crypto should be true");
+#endif
 
                 var reply = client.Transaction(new SendTextMessage("Test", "abcde"));
 #if DEVICE
@@ -46,7 +54,7 @@ namespace SockLibUnitTests {
                 Assert.AreEqual("abcde", ((RecTextMessage)reply).Text);
 
                 client.Close();
-                Assert.IsFalse(client.IsOpen, "ClientClosed");
+                Assert.IsFalse(client.IsOpen, "Client should be Closed");
             }
         }
 
