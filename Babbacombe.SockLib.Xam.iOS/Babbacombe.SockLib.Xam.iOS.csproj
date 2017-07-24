@@ -51,6 +51,9 @@
     <Compile Include="..\CustomMessageTable.cs">
       <Link>CustomMessageTable.cs</Link>
     </Compile>
+    <Compile Include="..\DelimGen.cs">
+      <Link>DelimGen.cs</Link>
+    </Compile>
     <Compile Include="..\DelimitedStream.cs">
       <Link>DelimitedStream.cs</Link>
     </Compile>
