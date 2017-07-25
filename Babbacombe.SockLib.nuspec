@@ -2,14 +2,14 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
     <metadata>
         <id>Babbacombe.SockLib</id>
-        <version>1.1.0</version>
+        <version>1.2.0</version>
         <title>Babbacombe Socket Library</title>
         <authors>Trevor Prinn</authors>
         <licenseUrl>https://github.com/trevorprinn/Babbacombe.SockLib/blob/master/LICENSE</licenseUrl>
         <projectUrl>https://github.com/trevorprinn/Babbacombe.SockLib</projectUrl>
         <requireLicenseAcceptance>true</requireLicenseAcceptance>
         <description>A general purpose Client/Server socket library for Windows, Linux, Android and iOS.</description>
-        <copyright>Copyright © Babbacombe Computers Ltd 2015-2016</copyright>
+        <copyright>Copyright © Babbacombe Computers Ltd 2015-2017</copyright>
     </metadata>
     <files>
         <file src="bin\Release\Babbacombe.SockLib.dll" target="lib\Babbacombe.SockLib.dll" />
