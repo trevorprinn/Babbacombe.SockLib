@@ -2,7 +2,7 @@
 /*
     Babbacombe SockLib
     https://github.com/trevorprinn/SockLib
-    Copyright © 2015 Babbacombe Computers Ltd.
+    Copyright © 2015-2017 Babbacombe Computers Ltd.
 
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Lesser General Public
