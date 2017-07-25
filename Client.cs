@@ -132,6 +132,9 @@ namespace Babbacombe.SockLib {
 
         private ClientPingManager _pingManager;
 
+        /// <summary>
+        /// Gets whether crypto is being used. Always false if SupportsCrypto is false.
+        /// </summary>
         public bool UsingCrypto { get; private set; }
 
         /// <summary>
@@ -179,6 +182,7 @@ namespace Babbacombe.SockLib {
         /// <param name="host">The name or IP address of the server.</param>
         /// <param name="port">The port number of the server.</param>
         /// <param name="mode">The mode to start the connection in. Defaults to Transaction.</param>
+        /// <param name="useCrypto">Whether to attempt to use crypto. Defaults to false.</param>
         public Client(string host, int port, Modes mode = Modes.Transaction, bool useCrypto = false)
             : this(getHostAddress(host), port, mode, useCrypto) {
                 _givenHost = host;
@@ -190,6 +194,7 @@ namespace Babbacombe.SockLib {
         /// <param name="hostAddress">The address of the server.</param>
         /// <param name="port">The port number of the server.</param>
         /// <param name="mode">The mode to start the connection in. Defaults to Transaction.</param>
+        /// <param name="useCrypto">Whether to attempt to use crypto. Defaults to false.</param>
         public Client(IPAddress hostAddress, int port, Modes mode = Modes.Transaction, bool useCrypto = false)
             : this(new IPEndPoint(hostAddress, port), mode, useCrypto) { }
 
@@ -198,6 +203,7 @@ namespace Babbacombe.SockLib {
         /// </summary>
         /// <param name="hostEp">The end point of the server.</param>
         /// <param name="mode">The mode to start the connection in. Defaults to Transaction.</param>
+        /// <param name="useCrypto">Whether to attempt to use crypto. Defaults to false.</param>
         public Client(IPEndPoint hostEp, Modes mode = Modes.Transaction, bool useCrypto = false) {
             Handlers = new ClientHandlers();
             HostEp = hostEp;
@@ -637,6 +643,10 @@ namespace Babbacombe.SockLib {
 
         internal bool Busy { get { return _busySending || ListenBusy; } }
 
+
+        /// <summary>
+        /// True if crypto is supported. It is supported on Windows/.net, but not on Xamarin.
+        /// </summary>
         public bool SupportsCrypto
 #if CRYPTO
             => true;

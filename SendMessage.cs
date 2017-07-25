@@ -57,7 +57,10 @@ namespace Babbacombe.SockLib {
         /// <param name="stream"></param>
         protected abstract void SendData(Stream stream);
 
-        protected const int CopyToBufSize = 8 * 1024;
+        /// <summary>
+        /// Gets or sets the size of the buffers used for copying stream data, in bytes. Defaults to 8K.
+        /// </summary>
+        protected int CopyToBufSize { get; set; } = 8 * 1024;
 
         /// <summary>
         /// Object used to generate message delimiters, if not specified by the server or client.
@@ -67,7 +70,7 @@ namespace Babbacombe.SockLib {
 #if TEST
         public void Send(Stream stream, BaseDelimGen delimGen) {
 #else
-        internal void Send(Stream stream, IDelimGen delimGen) {
+        internal void Send(Stream stream, BaseDelimGen delimGen) {
 #endif
             bool inSendData = false;
             if (delimGen == null) delimGen = DefaultDelimGen;

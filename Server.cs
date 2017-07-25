@@ -384,6 +384,9 @@ namespace Babbacombe.SockLib {
             }
         }
 
+        /// <summary>
+        /// True if crypto is supported. It is supported on Windows/.net, but not on Xamarin.
+        /// </summary>
         public bool SupportsCrypto
 #if CRYPTO
             => true;
